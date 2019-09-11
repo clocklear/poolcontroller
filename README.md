@@ -36,3 +36,7 @@ Toggles the given relay (selected by `1`, `2`, or `3`).  Response is the current
 ## building and running
 
 Clone the repo, edit the code, then `make build` to rebuild for Raspberry Pi.  The `build` make target explicitly targets Pi 3+; if you are using an older Pi, try `GOARM=6`.  `scp` the file to your Pi, then execute the binary.  The service appears on port `3000` by default; you can override it with the `--http.addr` flag.
+
+## the future
+
+I intend to add scheduling to the service (allowing for relays to automatically kick on and off at certain times).  I also intend to integrate AWS services (lightly) to allow for CloudWatch alerts on failures, and DynamoDB state storage.
