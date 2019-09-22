@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/clocklear/pirelayserver/cmd/pirelayserver/internal/config"
 	"github.com/clocklear/pirelayserver/cmd/pirelayserver/internal/relay"
 	"github.com/go-kit/kit/log"
 )
@@ -55,16 +56,27 @@ func main() {
 	// App.
 	go func() {
 		var srv http.Server
-
-		logger := log.With(logger, "transport", "http")
 		logger.Log("addr", *httpAddr)
 
+		// Configurer
+		cfger, err := config.WithJsonConfigurer("config.json")
+		if err != nil {
+			errc <- err
+		}
+		cfg, err := cfger.Get()
+		if err != nil {
+			errc <- err
+		}
+
 		// Relay controller
-		ctrl := relay.NewController([]uint8{pinRelay1, pinRelay2, pinRelay3})
+		ctrl, err := relay.NewController(logger, []uint8{pinRelay1, pinRelay2, pinRelay3}, cfg)
+		if err != nil {
+			errc <- err
+		}
 
 		// Server config
 		srv.Addr = *httpAddr
-		srv.Handler = getHandler(ctrl)
+		srv.Handler = getHandler(cfger, ctrl)
 		srv.ReadTimeout = time.Second * 30
 		srv.WriteTimeout = time.Second * 30
 

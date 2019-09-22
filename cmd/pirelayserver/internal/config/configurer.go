@@ -2,6 +2,13 @@
 
 package config
 
+type Action uint8
+
+const (
+	Off Action = iota + 1
+	On
+)
+
 // Configurer describes an interface for retrieving and storing a config
 type Configurer interface {
 	Get() (Config, error)
@@ -10,5 +17,13 @@ type Configurer interface {
 
 // Config is a pirelayserver config
 type Config struct {
-	Schedules []string
+	Schedules []Schedule `json:"schedules"`
+}
+
+// Schedule is a mapping of a relay action along with a cron expression
+type Schedule struct {
+	ID         string `json:"id"`
+	Relay      uint8  `json:"relay"`
+	Expression string `json:"expression"`
+	Action     Action `json:"action"`
 }

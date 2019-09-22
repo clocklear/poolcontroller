@@ -2,9 +2,15 @@
 github.com/go-kit/kit/log
 # github.com/go-logfmt/logfmt v0.4.0
 github.com/go-logfmt/logfmt
+# github.com/golang/mock v1.3.1
+github.com/golang/mock/gomock
 # github.com/gorilla/mux v1.7.3
 github.com/gorilla/mux
 # github.com/kr/logfmt v0.0.0-20140226030751-b84e30acd515
 github.com/kr/logfmt
+# github.com/robfig/cron/v3 v3.0.0
+github.com/robfig/cron/v3
+# github.com/satori/go.uuid v1.2.0
+github.com/satori/go.uuid
 # github.com/stianeikeland/go-rpio/v4 v4.4.0
 github.com/stianeikeland/go-rpio/v4

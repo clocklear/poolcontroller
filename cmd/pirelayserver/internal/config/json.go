@@ -12,13 +12,18 @@ type JsonConfigurer struct {
 }
 
 func WithJsonConfigurer(filename string) (Configurer, error) {
-	_, err := os.Stat(filename)
-	if os.IsNotExist(err) {
-		return nil, err
-	}
 	c := JsonConfigurer{
 		filename: filename,
 	}
+	_, err := os.Stat(filename)
+	if os.IsNotExist(err) {
+		// Create a blank config and persist it
+		err = c.Set(Config{})
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return &c, nil
 }
 

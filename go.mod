@@ -1,6 +1,6 @@
 module github.com/clocklear/pirelayserver
 
-go 1.13
+go 1.12
 
 require (
 	github.com/go-kit/kit v0.9.0
@@ -12,6 +12,8 @@ require (
 	github.com/gorilla/mux v1.7.3
 	github.com/hashicorp/go-multierror v1.0.0 // indirect
 	github.com/pkg/errors v0.8.1 // indirect
+	github.com/robfig/cron/v3 v3.0.0
+	github.com/satori/go.uuid v1.2.0
 	github.com/sigurn/crc8 v0.0.0-20160107002456-e55481d6f45c // indirect
 	github.com/sigurn/utils v0.0.0-20190728110027-e1fefb11a144 // indirect
 	github.com/stianeikeland/go-rpio v4.2.0+incompatible // indirect
