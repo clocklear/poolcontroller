@@ -8,6 +8,7 @@ require (
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/gobuffalo/uuid v2.0.5+incompatible // indirect
 	github.com/gofrs/uuid v3.2.0+incompatible // indirect
+	github.com/golang/mock v1.3.1
 	github.com/gorilla/mux v1.7.3
 	github.com/hashicorp/go-multierror v1.0.0 // indirect
 	github.com/pkg/errors v0.8.1 // indirect
