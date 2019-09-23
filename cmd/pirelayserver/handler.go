@@ -41,11 +41,11 @@ func errorResponse(w http.ResponseWriter, err error) error {
 
 func getHandler(cfger config.Configurer, ctrl *relay.Controller) http.Handler {
 	r := mux.NewRouter()
-	r.HandleFunc("/", healthHandler(ctrl)).Methods("GET")
+	r.HandleFunc("/relays", healthHandler(ctrl)).Methods("GET")
+	r.HandleFunc("/relays/{relay}/toggle", toggleHandler(ctrl)).Methods("POST")
 	r.HandleFunc("/config", getConfigHandler(cfger)).Methods("GET")
 	r.HandleFunc("/config/schedules", addScheduleHandler(cfger, ctrl)).Methods("POST")
 	r.HandleFunc("/config/schedules/{id}", removeScheduleHandler(cfger, ctrl)).Methods("DELETE")
-	r.HandleFunc("/relay/{relay}/toggle", toggleHandler(ctrl)).Methods("POST")
 
 	return r
 }
@@ -134,7 +134,7 @@ func addScheduleHandler(cfger config.Configurer, ctrl *relay.Controller) func(ht
 		}
 
 		// Good to go!
-		okResponse(w, s)
+		jsonResponse(w, http.StatusCreated, s)
 	}
 }
 
