@@ -13,17 +13,22 @@ import (
 )
 
 func okResponse(w http.ResponseWriter, payload interface{}) error {
-	return jsonResponse(w, http.StatusOK, payload)
+	if payload != nil {
+		return jsonResponse(w, http.StatusOK, payload)
+	}
+	return jsonResponse(w, http.StatusNoContent, payload)
 }
 
 func jsonResponse(w http.ResponseWriter, status int, payload interface{}) error {
-	b, err := json.Marshal(payload)
-	if err != nil {
-		return err
-	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	w.Write(b)
+	if payload != nil {
+		b, err := json.Marshal(payload)
+		if err != nil {
+			return err
+		}
+		w.Write(b)
+	}
 	return nil
 }
 
@@ -36,16 +41,16 @@ func errorResponse(w http.ResponseWriter, err error) error {
 
 func getHandler(cfger config.Configurer, ctrl *relay.Controller) http.Handler {
 	r := mux.NewRouter()
-	r.HandleFunc("/", createHealthHandler(ctrl)).Methods("GET")
-	r.HandleFunc("/config", createGetConfigHandler(cfger)).Methods("GET")
-	r.HandleFunc("/config/schedules", createAddScheduleHandler(cfger, ctrl)).Methods("POST")
-	r.HandleFunc("/config/schedules/{id}", createRemoveScheduleHandler(cfger, ctrl)).Methods("DELETE")
-	r.HandleFunc("/relay/{relay}/toggle", createToggleHandler(ctrl)).Methods("POST")
+	r.HandleFunc("/", healthHandler(ctrl)).Methods("GET")
+	r.HandleFunc("/config", getConfigHandler(cfger)).Methods("GET")
+	r.HandleFunc("/config/schedules", addScheduleHandler(cfger, ctrl)).Methods("POST")
+	r.HandleFunc("/config/schedules/{id}", removeScheduleHandler(cfger, ctrl)).Methods("DELETE")
+	r.HandleFunc("/relay/{relay}/toggle", toggleHandler(ctrl)).Methods("POST")
 
 	return r
 }
 
-func createRemoveScheduleHandler(cfger config.Configurer, ctrl *relay.Controller) func(http.ResponseWriter, *http.Request) {
+func removeScheduleHandler(cfger config.Configurer, ctrl *relay.Controller) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		id := vars["id"]
@@ -92,7 +97,7 @@ func createRemoveScheduleHandler(cfger config.Configurer, ctrl *relay.Controller
 	}
 }
 
-func createAddScheduleHandler(cfger config.Configurer, ctrl *relay.Controller) func(http.ResponseWriter, *http.Request) {
+func addScheduleHandler(cfger config.Configurer, ctrl *relay.Controller) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		decoder := json.NewDecoder(r.Body)
 		var s config.Schedule
@@ -133,7 +138,7 @@ func createAddScheduleHandler(cfger config.Configurer, ctrl *relay.Controller) f
 	}
 }
 
-func createGetConfigHandler(cfger config.Configurer) func(http.ResponseWriter, *http.Request) {
+func getConfigHandler(cfger config.Configurer) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		cfg, err := cfger.Get()
 		if err != nil {
@@ -144,7 +149,7 @@ func createGetConfigHandler(cfger config.Configurer) func(http.ResponseWriter, *
 	}
 }
 
-func createHealthHandler(ctrl *relay.Controller) func(http.ResponseWriter, *http.Request) {
+func healthHandler(ctrl *relay.Controller) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		s, err := ctrl.Status()
 		if err != nil {
@@ -155,7 +160,7 @@ func createHealthHandler(ctrl *relay.Controller) func(http.ResponseWriter, *http
 	}
 }
 
-func createToggleHandler(ctrl *relay.Controller) func(http.ResponseWriter, *http.Request) {
+func toggleHandler(ctrl *relay.Controller) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		stridx := vars["relay"]

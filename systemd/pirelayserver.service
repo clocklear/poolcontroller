@@ -1,0 +1,9 @@
+[Unit]
+Description=PiRelayServer
+
+[Service]
+Type=simple
+ExecStart=/opt/pirelayserver/pirelayserver
+
+[Install]
+WantedBy=multi-user.target

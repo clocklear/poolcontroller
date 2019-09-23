@@ -2,11 +2,11 @@
 
 package config
 
-type Action uint8
+type Action string
 
 const (
-	Off Action = iota + 1
-	On
+	Off Action = "off"
+	On  Action = "on"
 )
 
 // Configurer describes an interface for retrieving and storing a config
