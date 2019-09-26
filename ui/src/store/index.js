@@ -15,9 +15,9 @@ import rootReducer from '../reducers';
 export const history = createBrowserHistory();
 
 const persistConfig = {
-  key: 'make',
+  key: 'pirelayserver',
   storage,
-  whitelist: ['user'],
+  whitelist: [''],
 };
 const reducer = persistReducer(persistConfig, rootReducer);
 
