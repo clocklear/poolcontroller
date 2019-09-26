@@ -17,8 +17,8 @@ const (
 
 // Config is a pirelayserver config
 type Config struct {
-	Schedules  []Schedule `json:"schedules"`
-	LastStatus Status     `json:"lastStatus"`
+	Schedules  []Schedule       `json:"schedules"`
+	RelayNames map[uint8]string `json:"relayNames"`
 }
 
 // Schedule is a mapping of a relay action along with a cron expression
@@ -30,8 +30,9 @@ type Schedule struct {
 }
 
 type State struct {
-	Relay uint8 `json:"relay"`
-	State uint8 `json:"state"`
+	Name  string `json:"name"`
+	Relay uint8  `json:"relay"`
+	State uint8  `json:"state"`
 }
 
 type Status struct {

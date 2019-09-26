@@ -20,6 +20,7 @@ func NewRelayController(l log.Logger, relayPins []uint8, cfger Configurer) (*Rel
 		relayPins: relayPins,
 		logger:    l,
 		scheduler: cron.New(),
+		cfger:     cfger,
 	}
 	cfg, err := cfger.Get()
 	if err != nil {
@@ -77,20 +78,35 @@ func (c *RelayController) Status() (Status, error) {
 		return r, err
 	}
 	defer rpio.Close()
+	// load cfg for potential name overrides
+	cfg, err := c.cfger.Get()
+	if err != nil {
+		return r, err
+	}
 	for k, v := range c.relayPins {
+		rly := uint8(k) + 1
+		n := fmt.Sprintf("Relay %v", rly)
+		if v, ok := cfg.RelayNames[rly]; ok {
+			n = v
+		}
 		pin := rpio.Pin(v)
 		s := pin.Read()
 		states = append(states, State{
-			Relay: uint8(k) + 1,
+			Relay: rly,
 			State: uint8(s),
+			Name:  n,
 		})
 	}
 	r.States = states
 	return r, nil
 }
 
+func (c *RelayController) IsValidRelay(relay uint8) bool {
+	return int(relay) <= len(c.relayPins)
+}
+
 func (c *RelayController) Toggle(relay uint8) error {
-	if int(relay) > len(c.relayPins) {
+	if !c.IsValidRelay(relay) {
 		return fmt.Errorf("invalid relay. must be uint between 1 and %v", len(c.relayPins))
 	}
 	if err := rpio.Open(); err != nil {

@@ -21,24 +21,39 @@ Most of the power of this project lies in the ability to schedule relay actions.
 
 Returns the current status of the relays.
 
-#### example response:
+**example response:**
 
-```
+```json
 {
     "relayStates": [
         {
+            "name": "Relay 1",
             "relay": 1,
             "state": 0
         },
         {
+            "name": "Relay 2",
             "relay": 2,
             "state": 0
         },
         {
+            "name": "Relay 3",
             "relay": 3,
             "state": 0
         }
     ]
+}
+```
+
+### `POST /config/relay/{relay}/name`
+
+Allows for changing of a given relay name.  A `204 No Content` status code indicates success; all other responses are failures.
+
+**sample request:**
+
+```json
+{
+    "relayName": "Pool Pump"
 }
 ```
 
@@ -50,9 +65,9 @@ Toggles the given relay (selected by `1`, `2`, or `3`).  Response is the current
 
 Returns the contents of the current configuration.
 
-#### example response:
+**example response:**
 
-```
+```json
 {
     "schedules": [
         {
@@ -75,17 +90,17 @@ Returns the contents of the current configuration.
 
 Creates a new schedule entry.  The schedule should have following JSON syntax:
 
-| property | *description* |
-|----|-----|
-| relay | Logical relay number to control (usually 1 to n) |
-| expression | Cron expression the action should be triggered on |
-| action | Action to perform.  Current valid actions are `off` and `on`. |
+| property   | *description*                                                 |
+|------------|---------------------------------------------------------------|
+| relay      | Logical relay number to control (usually 1 to n)              |
+| expression | Cron expression the action should be triggered on             |
+| action     | Action to perform.  Current valid actions are `off` and `on`. |
 
 A `201 Created` response indicates the schedule was accepted and applied.  All other responses are failures.
 
-#### example response
+**example response:**
 
-```
+```json
 {
     "id": "fe857123-fc82-43a3-a030-101d9757bc82",
     "relay": 1,

@@ -1,2 +1,4 @@
 pirelayserver
 !cmd/**
+build
+node_modules

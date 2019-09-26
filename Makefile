@@ -1,4 +1,16 @@
-build:
-	GOOS=linux GOARCH=arm GOARM=7 go build ./cmd/pirelayserver
+PI=10.1.0.69
 
-.PHONY: build
+ui:
+	cd ./ui && yarn build
+
+pirelayserver:
+	GOOS=linux GOARCH=arm GOARM=7 packr build ./cmd/pirelayserver
+
+build: ui pirelayserver
+	
+deploy:	
+	ssh -t pi@${PI} 'sudo service pirelayserver stop'
+	scp ./pirelayserver pi@${PI}:/opt/pirelayserver/pirelayserver
+	ssh -t pi@${PI} 'sudo service pirelayserver start'
+
+.PHONY: build deploy ui pirelayserver

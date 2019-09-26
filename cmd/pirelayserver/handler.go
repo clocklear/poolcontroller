@@ -2,11 +2,13 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 
 	// "github.com/go-kit/kit/log"
 	"github.com/clocklear/pirelayserver/cmd/pirelayserver/internal"
+	"github.com/gobuffalo/packr"
 	"github.com/gorilla/mux"
 	uuid "github.com/satori/go.uuid"
 )
@@ -40,13 +42,67 @@ func errorResponse(w http.ResponseWriter, err error) error {
 
 func getHandler(cfger internal.Configurer, ctrl *internal.RelayController) http.Handler {
 	r := mux.NewRouter()
-	r.HandleFunc("/relays", healthHandler(ctrl)).Methods("GET")
-	r.HandleFunc("/relays/{relay}/toggle", toggleHandler(ctrl)).Methods("POST")
+
+	r.HandleFunc("/relays", relayStatusHandler(ctrl)).Methods("GET")
+	r.HandleFunc("/relays/{relay}/toggle", toggleRelayHandler(ctrl)).Methods("POST")
 	r.HandleFunc("/config", getConfigHandler(cfger)).Methods("GET")
 	r.HandleFunc("/config/schedules", addScheduleHandler(cfger, ctrl)).Methods("POST")
+	r.HandleFunc("/config/relay/{relay}/name", setRelayNameHandler(cfger, ctrl)).Methods("POST")
 	r.HandleFunc("/config/schedules/{id}", removeScheduleHandler(cfger, ctrl)).Methods("DELETE")
 
+	// Set up handler for web ui
+	box := packr.NewBox("../../ui/build")
+	r.PathPrefix("/").Handler(
+		http.StripPrefix("/", http.FileServer(box)),
+	)
+
 	return r
+}
+
+type setRelayNameRequest struct {
+	RelayName string `json:"relayName"`
+}
+
+func setRelayNameHandler(cfger internal.Configurer, ctrl *internal.RelayController) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		stridx := vars["relay"]
+		idx, err := strconv.Atoi(stridx)
+		if err != nil {
+			errorResponse(w, err)
+			return
+		}
+		if !ctrl.IsValidRelay(uint8(idx)) {
+			errorResponse(w, fmt.Errorf("%v is an invalid relay", idx))
+			return
+		}
+
+		decoder := json.NewDecoder(r.Body)
+		var req setRelayNameRequest
+		err = decoder.Decode(&req)
+		if err != nil {
+			errorResponse(w, err)
+			return
+		}
+
+		cfg, err := cfger.Get()
+		if err != nil {
+			errorResponse(w, err)
+			return
+		}
+
+		if cfg.RelayNames == nil {
+			cfg.RelayNames = make(map[uint8]string)
+		}
+		cfg.RelayNames[uint8(idx)] = req.RelayName
+		err = cfger.Set(cfg)
+		if err != nil {
+			errorResponse(w, err)
+			return
+		}
+
+		okResponse(w, nil)
+	}
 }
 
 func removeScheduleHandler(cfger internal.Configurer, ctrl *internal.RelayController) func(http.ResponseWriter, *http.Request) {
@@ -148,7 +204,7 @@ func getConfigHandler(cfger internal.Configurer) func(http.ResponseWriter, *http
 	}
 }
 
-func healthHandler(ctrl *internal.RelayController) func(http.ResponseWriter, *http.Request) {
+func relayStatusHandler(ctrl *internal.RelayController) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		s, err := ctrl.Status()
 		if err != nil {
@@ -159,7 +215,7 @@ func healthHandler(ctrl *internal.RelayController) func(http.ResponseWriter, *ht
 	}
 }
 
-func toggleHandler(ctrl *internal.RelayController) func(http.ResponseWriter, *http.Request) {
+func toggleRelayHandler(ctrl *internal.RelayController) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		stridx := vars["relay"]
