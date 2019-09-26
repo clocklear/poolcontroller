@@ -10,8 +10,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/clocklear/pirelayserver/cmd/pirelayserver/internal/config"
-	"github.com/clocklear/pirelayserver/cmd/pirelayserver/internal/relay"
+	"github.com/clocklear/pirelayserver/cmd/pirelayserver/internal"
 	"github.com/go-kit/kit/log"
 )
 
@@ -29,7 +28,8 @@ func main() {
 
 	// Config.
 	var (
-		httpAddr = flag.String("http.addr", ":3000", "HTTP listen address")
+		httpAddr   = flag.String("http.addr", ":3000", "HTTP listen address")
+		configFile = flag.String("config.file", "config.json", "Configuration file")
 	)
 	flag.Parse()
 
@@ -59,17 +59,13 @@ func main() {
 		logger.Log("addr", *httpAddr)
 
 		// Configurer
-		cfger, err := config.WithJsonConfigurer("config.json")
-		if err != nil {
-			errc <- err
-		}
-		cfg, err := cfger.Get()
+		cfger, err := internal.WithJsonConfigurer(*configFile)
 		if err != nil {
 			errc <- err
 		}
 
 		// Relay controller
-		ctrl, err := relay.NewController(logger, []uint8{pinRelay1, pinRelay2, pinRelay3}, cfg)
+		ctrl, err := internal.NewRelayController(logger, []uint8{pinRelay1, pinRelay2, pinRelay3}, cfger)
 		if err != nil {
 			errc <- err
 		}

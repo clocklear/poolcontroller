@@ -1,45 +1,39 @@
-package relay
+package internal
 
 import (
 	"fmt"
 
-	"github.com/clocklear/pirelayserver/cmd/pirelayserver/internal/config"
 	"github.com/go-kit/kit/log"
 	"github.com/robfig/cron/v3"
 	"github.com/stianeikeland/go-rpio/v4"
 )
 
-type State struct {
-	Relay uint8 `json:"relay"`
-	State uint8 `json:"state"`
-}
-
-type Status struct {
-	States []State `json:"relayStates"`
-}
-
-type Controller struct {
+type RelayController struct {
 	relayPins []uint8
 	scheduler *cron.Cron
 	logger    log.Logger
+	cfger     Configurer
 }
 
-func NewController(l log.Logger, relayPins []uint8, cfg config.Config) (*Controller, error) {
-	c := Controller{
+func NewRelayController(l log.Logger, relayPins []uint8, cfger Configurer) (*RelayController, error) {
+	c := RelayController{
 		relayPins: relayPins,
 		logger:    l,
 		scheduler: cron.New(),
 	}
-	err := c.ApplyConfig(cfg)
+	cfg, err := cfger.Get()
+	if err != nil {
+		return nil, err
+	}
+	err = c.ApplyConfig(cfg)
 	if err != nil {
 		return nil, err
 	}
 	return &c, nil
 }
 
-func (c *Controller) ApplyConfig(cfg config.Config) error {
+func (c *RelayController) ApplyConfig(cfg Config) error {
 	// Handle schedules
-	// TODO: Might want to wait for returned context to complete
 	c.scheduler.Stop()
 	c.clearScheduler()
 	for _, s := range cfg.Schedules {
@@ -53,21 +47,21 @@ func (c *Controller) ApplyConfig(cfg config.Config) error {
 	return nil
 }
 
-func (c *Controller) clearScheduler() {
+func (c *RelayController) clearScheduler() {
 	for _, e := range c.scheduler.Entries() {
 		c.scheduler.Remove(e.ID)
 	}
 }
 
-func (c *Controller) createToggleFunction(relay uint8, action config.Action) func() {
+func (c *RelayController) createToggleFunction(relay uint8, action Action) func() {
 	ret := func() {}
 	switch action {
-	case config.On:
+	case On:
 		ret = func() {
 			c.logger.Log("msg", "Switching relay to On", "relay", relay)
 			c.On(relay)
 		}
-	case config.Off:
+	case Off:
 		ret = func() {
 			c.logger.Log("msg", "Switching relay to Off", "relay", relay)
 			c.Off(relay)
@@ -76,7 +70,7 @@ func (c *Controller) createToggleFunction(relay uint8, action config.Action) fun
 	return ret
 }
 
-func (c *Controller) Status() (Status, error) {
+func (c *RelayController) Status() (Status, error) {
 	r := Status{}
 	states := []State{}
 	if err := rpio.Open(); err != nil {
@@ -95,7 +89,7 @@ func (c *Controller) Status() (Status, error) {
 	return r, nil
 }
 
-func (c *Controller) Toggle(relay uint8) error {
+func (c *RelayController) Toggle(relay uint8) error {
 	if int(relay) > len(c.relayPins) {
 		return fmt.Errorf("invalid relay. must be uint between 1 and %v", len(c.relayPins))
 	}
@@ -109,7 +103,7 @@ func (c *Controller) Toggle(relay uint8) error {
 	return nil
 }
 
-func (c *Controller) On(relay uint8) error {
+func (c *RelayController) On(relay uint8) error {
 	if int(relay) > len(c.relayPins) {
 		return fmt.Errorf("invalid relay. must be uint between 1 and %v", len(c.relayPins))
 	}
@@ -123,7 +117,7 @@ func (c *Controller) On(relay uint8) error {
 	return nil
 }
 
-func (c *Controller) Off(relay uint8) error {
+func (c *RelayController) Off(relay uint8) error {
 	if int(relay) > len(c.relayPins) {
 		return fmt.Errorf("invalid relay. must be uint between 1 and %v", len(c.relayPins))
 	}

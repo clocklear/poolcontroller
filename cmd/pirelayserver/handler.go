@@ -6,8 +6,7 @@ import (
 	"strconv"
 
 	// "github.com/go-kit/kit/log"
-	"github.com/clocklear/pirelayserver/cmd/pirelayserver/internal/config"
-	"github.com/clocklear/pirelayserver/cmd/pirelayserver/internal/relay"
+	"github.com/clocklear/pirelayserver/cmd/pirelayserver/internal"
 	"github.com/gorilla/mux"
 	uuid "github.com/satori/go.uuid"
 )
@@ -39,7 +38,7 @@ func errorResponse(w http.ResponseWriter, err error) error {
 	return jsonResponse(w, http.StatusInternalServerError, b)
 }
 
-func getHandler(cfger config.Configurer, ctrl *relay.Controller) http.Handler {
+func getHandler(cfger internal.Configurer, ctrl *internal.RelayController) http.Handler {
 	r := mux.NewRouter()
 	r.HandleFunc("/relays", healthHandler(ctrl)).Methods("GET")
 	r.HandleFunc("/relays/{relay}/toggle", toggleHandler(ctrl)).Methods("POST")
@@ -50,7 +49,7 @@ func getHandler(cfger config.Configurer, ctrl *relay.Controller) http.Handler {
 	return r
 }
 
-func removeScheduleHandler(cfger config.Configurer, ctrl *relay.Controller) func(http.ResponseWriter, *http.Request) {
+func removeScheduleHandler(cfger internal.Configurer, ctrl *internal.RelayController) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		id := vars["id"]
@@ -97,10 +96,10 @@ func removeScheduleHandler(cfger config.Configurer, ctrl *relay.Controller) func
 	}
 }
 
-func addScheduleHandler(cfger config.Configurer, ctrl *relay.Controller) func(http.ResponseWriter, *http.Request) {
+func addScheduleHandler(cfger internal.Configurer, ctrl *internal.RelayController) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		decoder := json.NewDecoder(r.Body)
-		var s config.Schedule
+		var s internal.Schedule
 		err := decoder.Decode(&s)
 		if err != nil {
 			errorResponse(w, err)
@@ -138,7 +137,7 @@ func addScheduleHandler(cfger config.Configurer, ctrl *relay.Controller) func(ht
 	}
 }
 
-func getConfigHandler(cfger config.Configurer) func(http.ResponseWriter, *http.Request) {
+func getConfigHandler(cfger internal.Configurer) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		cfg, err := cfger.Get()
 		if err != nil {
@@ -149,7 +148,7 @@ func getConfigHandler(cfger config.Configurer) func(http.ResponseWriter, *http.R
 	}
 }
 
-func healthHandler(ctrl *relay.Controller) func(http.ResponseWriter, *http.Request) {
+func healthHandler(ctrl *internal.RelayController) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		s, err := ctrl.Status()
 		if err != nil {
@@ -160,7 +159,7 @@ func healthHandler(ctrl *relay.Controller) func(http.ResponseWriter, *http.Reque
 	}
 }
 
-func toggleHandler(ctrl *relay.Controller) func(http.ResponseWriter, *http.Request) {
+func toggleHandler(ctrl *internal.RelayController) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		stridx := vars["relay"]
