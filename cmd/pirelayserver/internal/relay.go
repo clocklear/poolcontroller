@@ -13,14 +13,16 @@ type RelayController struct {
 	scheduler *cron.Cron
 	logger    log.Logger
 	cfger     Configurer
+	el        *EventLogger
 }
 
-func NewRelayController(l log.Logger, relayPins []uint8, cfger Configurer) (*RelayController, error) {
+func NewRelayController(l log.Logger, relayPins []uint8, cfger Configurer, el *EventLogger) (*RelayController, error) {
 	c := RelayController{
 		relayPins: relayPins,
 		logger:    l,
 		scheduler: cron.New(),
 		cfger:     cfger,
+		el:        el,
 	}
 	cfg, err := cfger.Get()
 	if err != nil {
@@ -116,6 +118,8 @@ func (c *RelayController) Toggle(relay uint8) error {
 	pin := rpio.Pin(c.relayPins[relay-1])
 	pin.Output()
 	pin.Toggle()
+	s := pin.Read()
+	c.el.Log(fmt.Sprintf("Toggled relay %v, new state is %v", relay, s))
 	return nil
 }
 
@@ -130,6 +134,7 @@ func (c *RelayController) On(relay uint8) error {
 	pin := rpio.Pin(c.relayPins[relay-1])
 	pin.Output()
 	pin.High()
+	c.el.Log(fmt.Sprintf("Switching relay %v on", relay))
 	return nil
 }
 
@@ -144,5 +149,6 @@ func (c *RelayController) Off(relay uint8) error {
 	pin := rpio.Pin(c.relayPins[relay-1])
 	pin.Output()
 	pin.Low()
+	c.el.Log(fmt.Sprintf("Switching relay %v off", relay))
 	return nil
 }

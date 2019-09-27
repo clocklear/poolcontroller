@@ -1,7 +1,10 @@
-import relays from './relays'
 import config from './config'
+import events from './events'
+import relays from './relays'
+
 
 export default {
-  relays,
-  config
+  config,
+  events,
+  relays
 };

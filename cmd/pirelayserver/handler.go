@@ -40,15 +40,16 @@ func errorResponse(w http.ResponseWriter, err error) error {
 	return jsonResponse(w, http.StatusInternalServerError, b)
 }
 
-func getHandler(cfger internal.Configurer, ctrl *internal.RelayController) http.Handler {
+func getHandler(cfger internal.Configurer, ctrl *internal.RelayController, el *internal.EventLogger) http.Handler {
 	r := mux.NewRouter()
 
-	r.HandleFunc("/relays", relayStatusHandler(ctrl)).Methods("GET")
-	r.HandleFunc("/relays/{relay}/toggle", toggleRelayHandler(ctrl)).Methods("POST")
-	r.HandleFunc("/config", getConfigHandler(cfger)).Methods("GET")
-	r.HandleFunc("/config/schedules", addScheduleHandler(cfger, ctrl)).Methods("POST")
-	r.HandleFunc("/config/relay/{relay}/name", setRelayNameHandler(cfger, ctrl)).Methods("POST")
-	r.HandleFunc("/config/schedules/{id}", removeScheduleHandler(cfger, ctrl)).Methods("DELETE")
+	r.HandleFunc("/relays", relayStatusHandler(ctrl)).Methods(http.MethodGet)
+	r.HandleFunc("/relays/{relay}/toggle", toggleRelayHandler(ctrl)).Methods(http.MethodPost)
+	r.HandleFunc("/config", getConfigHandler(cfger)).Methods(http.MethodGet)
+	r.HandleFunc("/config/schedules", addScheduleHandler(cfger, ctrl)).Methods(http.MethodPost)
+	r.HandleFunc("/config/relay/{relay}/name", setRelayNameHandler(cfger, ctrl)).Methods(http.MethodPost)
+	r.HandleFunc("/config/schedules/{id}", removeScheduleHandler(cfger, ctrl)).Methods(http.MethodDelete)
+	r.HandleFunc("/events", getEventsHandler(el)).Methods(http.MethodGet)
 
 	// Set up handler for web ui
 	box := packr.NewBox("../../ui/build")
@@ -57,6 +58,22 @@ func getHandler(cfger internal.Configurer, ctrl *internal.RelayController) http.
 	)
 
 	return r
+}
+
+func getEventsHandler(el *internal.EventLogger) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		e := el.Events()
+		// Clone the slice
+		b := make([]*internal.Event, len(e))
+		copy(b, e)
+		// Reverse the slice
+		for i := len(b)/2 - 1; i >= 0; i-- {
+			opp := len(b) - 1 - i
+			b[i], b[opp] = b[opp], b[i]
+		}
+		okResponse(w, b)
+		return
+	}
 }
 
 type setRelayNameRequest struct {
