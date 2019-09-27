@@ -80,7 +80,7 @@ class App extends React.Component {
   }
 
   render() {
-    const { relays, isLoading, selectedTab, tabs, activity, momentFormat } = this.state
+    const { relays, isLoading, selectedTab, tabs, activity } = this.state
     const TAB_RELAYSTATES = tabs[0]
     const TAB_SCHEDULES = tabs[1]
     const TAB_ACTIVITYLOG = tabs[2]
