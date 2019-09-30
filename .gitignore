@@ -2,3 +2,5 @@ pirelayserver
 !cmd/**
 build
 node_modules
+config.json
+events.csv
