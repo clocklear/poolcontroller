@@ -48,10 +48,11 @@ type Configurer interface {
 // JsonConfigurer is a Configurer implementation backed by a JSON file
 type JsonConfigurer struct {
 	filename string
+	cfg      Config
 }
 
 func WithJsonConfigurer(filename string) (Configurer, error) {
-	c := JsonConfigurer{
+	c := &JsonConfigurer{
 		filename: filename,
 	}
 	_, err := os.Stat(filename)
@@ -62,12 +63,17 @@ func WithJsonConfigurer(filename string) (Configurer, error) {
 			return nil, err
 		}
 	}
+	cfg, err := c.Load()
+	if err != nil {
+		return nil, err
+	}
+	c.cfg = cfg
 
-	return &c, nil
+	return c, nil
 }
 
-// Get the config
-func (c *JsonConfigurer) Get() (Config, error) {
+// Load the config
+func (c *JsonConfigurer) Load() (Config, error) {
 	cfg := Config{}
 	dat, err := ioutil.ReadFile(c.filename)
 	if err != nil {
@@ -75,6 +81,10 @@ func (c *JsonConfigurer) Get() (Config, error) {
 	}
 	err = json.Unmarshal(dat, &cfg)
 	return cfg, err
+}
+
+func (c *JsonConfigurer) Get() (Config, error) {
+	return c.cfg, nil
 }
 
 // Set the config

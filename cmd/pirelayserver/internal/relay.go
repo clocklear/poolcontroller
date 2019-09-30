@@ -40,7 +40,7 @@ func (c *RelayController) ApplyConfig(cfg Config) error {
 	c.scheduler.Stop()
 	c.clearScheduler()
 	for _, s := range cfg.Schedules {
-		f := c.createToggleFunction(s.Relay, s.Action)
+		f := c.createToggleFunction(s.Relay, s.Action, "scheduled action")
 		_, err := c.scheduler.AddFunc(s.Expression, f)
 		if err != nil {
 			return err
@@ -56,18 +56,18 @@ func (c *RelayController) clearScheduler() {
 	}
 }
 
-func (c *RelayController) createToggleFunction(relay uint8, action Action) func() {
+func (c *RelayController) createToggleFunction(relay uint8, action Action, cause string) func() {
 	ret := func() {}
 	switch action {
 	case On:
 		ret = func() {
-			c.logger.Log("msg", "Switching relay to On", "relay", relay)
-			c.On(relay)
+			c.logger.Log("msg", "Switching relay to On", "relay", relay, "cause", cause)
+			c.On(relay, cause)
 		}
 	case Off:
 		ret = func() {
-			c.logger.Log("msg", "Switching relay to Off", "relay", relay)
-			c.Off(relay)
+			c.logger.Log("msg", "Switching relay to Off", "relay", relay, "cause", cause)
+			c.Off(relay, cause)
 		}
 	}
 	return ret
@@ -80,17 +80,10 @@ func (c *RelayController) Status() (Status, error) {
 		return r, err
 	}
 	defer rpio.Close()
-	// load cfg for potential name overrides
-	cfg, err := c.cfger.Get()
-	if err != nil {
-		return r, err
-	}
 	for k, v := range c.relayPins {
 		rly := uint8(k) + 1
-		n := fmt.Sprintf("Relay %v", rly)
-		if v, ok := cfg.RelayNames[rly]; ok {
-			n = v
-		}
+		// don't care about error here, because func gives a fallback
+		n, _ := c.relayName(rly)
 		pin := rpio.Pin(v)
 		s := pin.Read()
 		states = append(states, State{
@@ -101,6 +94,18 @@ func (c *RelayController) Status() (Status, error) {
 	}
 	r.States = states
 	return r, nil
+}
+
+func (c *RelayController) relayName(relay uint8) (string, error) {
+	name := fmt.Sprintf("Relay %v", relay)
+	cfg, err := c.cfger.Get()
+	if err != nil {
+		return name, err
+	}
+	if v, ok := cfg.RelayNames[relay]; ok {
+		name = v
+	}
+	return name, nil
 }
 
 func (c *RelayController) IsValidRelay(relay uint8) bool {
@@ -119,11 +124,16 @@ func (c *RelayController) Toggle(relay uint8) error {
 	pin.Output()
 	pin.Toggle()
 	s := pin.Read()
-	c.el.Log(fmt.Sprintf("Toggled relay %v, new state is %v", relay, s))
+	ss := "off"
+	if int(s) == 1 {
+		ss = "on"
+	}
+	n, _ := c.relayName(relay)
+	c.el.Log(fmt.Sprintf("Toggled '%v' (relay %v), new state is %v", n, relay, ss))
 	return nil
 }
 
-func (c *RelayController) On(relay uint8) error {
+func (c *RelayController) On(relay uint8, cause string) error {
 	if int(relay) > len(c.relayPins) {
 		return fmt.Errorf("invalid relay. must be uint between 1 and %v", len(c.relayPins))
 	}
@@ -134,11 +144,12 @@ func (c *RelayController) On(relay uint8) error {
 	pin := rpio.Pin(c.relayPins[relay-1])
 	pin.Output()
 	pin.High()
-	c.el.Log(fmt.Sprintf("Switching relay %v on", relay))
+	n, _ := c.relayName(relay)
+	c.el.Log(fmt.Sprintf("Switching '%v' (relay %v) on, cause: %v", n, relay, cause))
 	return nil
 }
 
-func (c *RelayController) Off(relay uint8) error {
+func (c *RelayController) Off(relay uint8, cause string) error {
 	if int(relay) > len(c.relayPins) {
 		return fmt.Errorf("invalid relay. must be uint between 1 and %v", len(c.relayPins))
 	}
@@ -149,6 +160,7 @@ func (c *RelayController) Off(relay uint8) error {
 	pin := rpio.Pin(c.relayPins[relay-1])
 	pin.Output()
 	pin.Low()
-	c.el.Log(fmt.Sprintf("Switching relay %v off", relay))
+	n, _ := c.relayName(relay)
+	c.el.Log(fmt.Sprintf("Switching '%v' (relay %v) on, cause: %v", n, relay, cause))
 	return nil
 }
