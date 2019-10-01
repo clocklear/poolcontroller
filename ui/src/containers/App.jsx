@@ -1,5 +1,5 @@
 import React from 'react'
-import { Pane, Spinner, Switch, Heading, Tablist, Tab, Table, Strong, IconButton, Dialog, FormField, TextInput, Combobox } from 'evergreen-ui'
+import { Pane, Spinner, Switch, Heading, Tablist, Tab, Table, Strong, IconButton, Dialog, FormField, TextInput, Combobox, Button } from 'evergreen-ui'
 import { connect } from 'react-redux';
 import Moment from 'react-moment';
 import api from '../modules/api';
@@ -160,7 +160,7 @@ class App extends React.Component {
                 )}
               </Pane>
               <Pane display={TAB_SCHEDULES === selectedTab ? 'block' : 'none'}>
-                {schedules.map(s =>
+                {schedules.length > 0 && schedules.map(s =>
                   <Pane key={s.id} display="flex" padding={16} background="tint2" borderRadius={3} marginY={16}>
                     <Pane flex={1} alignItems="center" display="flex">
                       <Pane flex={1} display="flex" flexDirection="column">
@@ -175,9 +175,17 @@ class App extends React.Component {
                     </Pane>
                   </Pane>
                 )}
+                {schedules.length === 0 && 
+                  <Pane flex={1} alignItems="center" display="flex" padding={16} border="default" borderRadius={3}>
+                    <Heading size={200}>No scheduled actions have been defined.</Heading>
+                  </Pane>
+                }
+                <Pane display="flex" marginY={16}>
+                  <Button marginRight={12} iconBefore="add-to-artifact" onClick={e => this.newSchedule()}>New scheduled action</Button>
+                </Pane>
                 <Dialog 
                   isShown={scheduleDialogIsOpen}
-                  title={scheduleDialogIntent + ' schedule'}
+                  title={scheduleDialogIntent + ' scheduled action'}
                   onCloseComplete={() => this.setState({ scheduleDialogIsOpen: false })}
                   onCancelComplete={() => this.setState({ scheduleDialogIsOpen: false })}
                   onConfirm={() => this.saveSchedule()}
@@ -206,24 +214,33 @@ class App extends React.Component {
                 </Dialog>
               </Pane>
               <Pane display={TAB_ACTIVITYLOG === selectedTab ? 'block' : 'none'} border="default" borderRadius={3}>
-                <Table.Head>
-                  <Table.TextHeaderCell flexGrow={2}>
-                    Event
-                  </Table.TextHeaderCell>
-                  <Table.TextHeaderCell flexShrink={1}>
-                    Occurred
-                  </Table.TextHeaderCell>
-                </Table.Head>
-                <Table.VirtualBody height={475}>
-                  {activity.map(e => (
-                    <Table.Row key={e.stamp}>
-                      <Table.TextCell flexGrow={2}>{e.msg}</Table.TextCell>
-                      <Table.TextCell flexShrink={1}>
-                        <Moment interval={0} format={this.props.isMobile ? "MM/DD/YY hh:mma" : "MMM DD, YYYY hh:mm:ssa"}>{e.stamp}</Moment>
-                      </Table.TextCell>
-                    </Table.Row>
-                  ))}
-                </Table.VirtualBody>
+                {activity.length > 0 && 
+                  <>
+                    <Table.Head>
+                      <Table.TextHeaderCell flexGrow={2}>
+                        Event
+                      </Table.TextHeaderCell>
+                      <Table.TextHeaderCell flexShrink={1}>
+                        Occurred
+                      </Table.TextHeaderCell>
+                    </Table.Head>
+                    <Table.VirtualBody height={475}>
+                      {activity.map(e => (
+                        <Table.Row key={e.stamp}>
+                          <Table.TextCell flexGrow={2}>{e.msg}</Table.TextCell>
+                          <Table.TextCell flexShrink={1}>
+                            <Moment interval={0} format={this.props.isMobile ? "MM/DD/YY hh:mma" : "MMM DD, YYYY hh:mm:ssa"}>{e.stamp}</Moment>
+                          </Table.TextCell>
+                        </Table.Row>
+                      ))}
+                    </Table.VirtualBody>
+                  </>
+                }
+                {activity.length === 0 &&
+                  <Pane flex={1} alignItems="center" display="flex" padding={16} border="default" borderRadius={3}>
+                    <Heading size={200}>No activity exists.</Heading>
+                  </Pane>
+                }
               </Pane>
             </>
           }
