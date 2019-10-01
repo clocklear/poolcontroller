@@ -1,15 +1,13 @@
-const tabs = ["Relay States", "Schedules", "Activity Log"];
 const states = {
   production: {
     isLoading: true,
     relays: [],
-    selectedTab: tabs[0],
-    tabs: tabs,
     activity: [],
     schedules: [],
     scheduleDialogIsOpen: false,
     editedSchedule: {},
     removeScheduleDialogIsOpen: false,
+    scheduleDialogIntent: "",
     removeScheduleId: 0,
   },
   development: {
@@ -17,6 +15,7 @@ const states = {
     removeScheduleDialogIsOpen: false,
     editedSchedule: {},
     scheduleDialogIsOpen: false,
+    scheduleDialogIntent: "",
     isLoading: false,
     relays: [{
         "relay": 1,
@@ -34,8 +33,6 @@ const states = {
         "state": 0
       }
     ],
-    selectedTab: tabs[0],
-    tabs: tabs,
     activity: [{
         "stamp": "2019-09-26T21:09:15.043992-04:00",
         "msg": "pirelayserver booted up"
