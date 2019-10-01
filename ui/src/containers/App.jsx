@@ -1,9 +1,11 @@
 import React from 'react'
-import { Pane, Spinner, Switch, Heading, Tablist, Tab, Table } from 'evergreen-ui'
+import { Pane, Spinner, Switch, Heading, Tablist, Tab, Table, Strong, IconButton, Dialog, FormField, TextInput, Combobox } from 'evergreen-ui'
 import { connect } from 'react-redux';
 import Moment from 'react-moment';
 import api from '../modules/api';
 import sizes from 'react-sizes';
+import cronstrue from 'cronstrue';
+import initialState from '../modules/initialState'
 
 class App extends React.Component {
   static propTypes = {
@@ -12,40 +14,13 @@ class App extends React.Component {
 
   constructor(props) {
     super(props);
-    const tabs = ["Relay States", "Schedules", "Activity Log"];
-    this.state = {
-      isLoading: true,
-      relays: [
-        {"relay":1, "name":"Relay 1", "state":0},
-        {"relay":2, "name":"Relay 2", "state":1}
-      ],
-      selectedTab: tabs[0],
-      tabs: tabs,
-      activity: [
-        {
-          "stamp": "2019-09-26T21:09:15.043992-04:00",
-          "msg": "pirelayserver booted up"
-        },
-        {
-          "stamp": "2019-09-26T21:09:50.32457-04:00",
-          "msg": "pirelayserver booted up"
-        },
-        {
-          "stamp": "2019-09-26T21:31:37.038862-04:00",
-          "msg": "pirelayserver booted up"
-        },
-        {
-          "stamp": "2019-09-26T21:31:38.666961-04:00",
-          "msg": "pirelayserver shut down cleanly"
-        },
-        {
-          "stamp": "2019-09-26T21:31:44.043208-04:00",
-          "msg": "pirelayserver booted up"
-        }
-      ]
-    };
+    this.state = initialState;
     this.refreshRelayState = this.refreshRelayState.bind(this)
     this.toggleRelayState = this.toggleRelayState.bind(this)
+    this.editSchedule = this.editSchedule.bind(this)
+    this.saveSchedule = this.saveSchedule.bind(this)
+    this.findRelayById = this.findRelayById.bind(this)
+    this.findActionByString = this.findActionByString.bind(this)
   }
 
   async refreshRelayState() {
@@ -58,6 +33,11 @@ class App extends React.Component {
     this.setState({ activity });
   }
 
+  async refreshSchedules() {
+    const cfg = await api.config.getConfig();
+    this.setState({ schedules: cfg.schedules });
+  }
+
   async componentDidMount() {
     this.refreshRelayState()
     this.relayRefreshInterval = setInterval(() => {
@@ -68,6 +48,7 @@ class App extends React.Component {
       this.refreshActivity();
     }, 5000);
     this.setState({ isLoading: false });
+
   }
   componentWillUnmount() {
     clearInterval(this.relayRefreshInterval);
@@ -79,11 +60,66 @@ class App extends React.Component {
     this.setState({ relays })
   }
 
+  editSchedule(s) {
+    const editedSchedule = { ...s };
+    this.setState({
+      scheduleDialogIntent: 'Edit',
+      scheduleDialogIsOpen: true,
+      editedSchedule
+    });
+  }
+
+  async saveSchedule() {
+    await api.config.createSchedule(this.state.editedSchedule);
+    await this.refreshSchedules();
+    this.setState({ scheduleDialogIsOpen: false })
+  }
+
+  findRelayById(relays, id) {
+    return relays.reduce((accum, curr) => {
+      if (accum) return accum
+      if (curr.relay === id) return curr;
+      return undefined;
+    }, undefined);
+  }
+
+  findActionByString(actions, str) {
+    return actions.reduce((accum, curr) => {
+      if (accum) return accum
+      if (curr.value === str) return curr
+      return undefined;
+    }, undefined);
+  }
+
+  newSchedule() {
+    const editedSchedule = {
+      relay: 0,
+      expression: "",
+      action: "off"
+    };
+    this.setState({
+      scheduleDialogIntent: 'New',
+      scheduleDialogIsOpen: true,
+      editedSchedule
+    });
+  }
+
   render() {
-    const { relays, isLoading, selectedTab, tabs, activity } = this.state
+    const { relays, isLoading, selectedTab, tabs, activity, schedules, scheduleDialogIsOpen, scheduleDialogIntent, editedSchedule } = this.state
     const TAB_RELAYSTATES = tabs[0]
     const TAB_SCHEDULES = tabs[1]
     const TAB_ACTIVITYLOG = tabs[2]
+    const actions = [
+      {
+        "label": "Off",
+        "value": "off"
+      },
+      {
+        "label": "On",
+        "value": "on"
+      }
+    ]
+
     return (
         <Pane margin="auto" maxWidth={800} padding={16}>
           {!this.props.isMobile && 
@@ -124,7 +160,50 @@ class App extends React.Component {
                 )}
               </Pane>
               <Pane display={TAB_SCHEDULES === selectedTab ? 'block' : 'none'}>
-                NYI
+                {schedules.map(s =>
+                  <Pane key={s.id} display="flex" padding={16} background="tint2" borderRadius={3} marginY={16}>
+                    <Pane flex={1} alignItems="center" display="flex">
+                      <Pane flex={1} display="flex" flexDirection="column">
+                        <Heading size={500}>{cronstrue.toString(s.expression)}</Heading>
+                        <Heading size={100}>
+                          Turn <Strong>{s.action}</Strong> relay <Strong>{s.relay}</Strong>
+                        </Heading>
+                      </Pane>
+                      <Pane>
+                        <IconButton icon="edit" appearance="minimal" onClick={e => this.editSchedule(s)} />
+                      </Pane>
+                    </Pane>
+                  </Pane>
+                )}
+                <Dialog 
+                  isShown={scheduleDialogIsOpen}
+                  title={scheduleDialogIntent + ' schedule'}
+                  onCloseComplete={() => this.setState({ scheduleDialogIsOpen: false })}
+                  onCancelComplete={() => this.setState({ scheduleDialogIsOpen: false })}
+                  onConfirm={() => this.saveSchedule()}
+                  confirmLabel="Save">
+                  <Pane display="flex" flexDirection="column">
+                    <FormField label="Cron Expression" hint="Any statement supported by github.com/robfig/cron is valid.">
+                      <TextInput width="100%" placeholder="0 0 * * *" value={editedSchedule.expression} />
+                    </FormField>
+                    <FormField label="Relay" marginTop={10}>
+                      <Combobox
+                        items={relays}
+                        itemToString={i => i ? i.name : ''}
+                        selectedItem={this.findRelayById(relays, editedSchedule.relay)}
+                        width="100%"
+                        />
+                    </FormField>
+                    <FormField label="Action" marginTop={10}>
+                      <Combobox
+                        items={actions}
+                        itemToString={i => i ? i.label : ''}
+                        selectedItem={this.findActionByString(actions, editedSchedule.action)}
+                        width="100%"
+                        />
+                    </FormField>
+                  </Pane>
+                </Dialog>
               </Pane>
               <Pane display={TAB_ACTIVITYLOG === selectedTab ? 'block' : 'none'} border="default" borderRadius={3}>
                 <Table.Head>

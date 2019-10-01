@@ -2730,6 +2730,11 @@ create-hmac@^1.1.0, create-hmac@^1.1.2, create-hmac@^1.1.4:
     safe-buffer "^5.0.1"
     sha.js "^2.4.8"
 
+cronstrue@^1.83.0:
+  version "1.83.0"
+  resolved "https://registry.yarnpkg.com/cronstrue/-/cronstrue-1.83.0.tgz#a305e36574990454050157fc800e34e505cdf0f6"
+  integrity sha512-tueKHiqaao6PyCjkXd8j4gbcMxedgM7Ar12uWpHLIn9U/Qz8tbzDIXG8hAarc8Fw16OQVQika6ohIImW9KSuxQ==
+
 cross-spawn@6.0.5, cross-spawn@^6.0.0, cross-spawn@^6.0.5:
   version "6.0.5"
   resolved "https://registry.yarnpkg.com/cross-spawn/-/cross-spawn-6.0.5.tgz#4a5ec7c64dfae22c3a14124dbacdee846d80cbc4"

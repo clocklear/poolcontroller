@@ -93,5 +93,10 @@ func (c *JsonConfigurer) Set(cfg Config) error {
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(c.filename, dat, 0644)
+	err = ioutil.WriteFile(c.filename, dat, 0644)
+	if err != nil {
+		return err
+	}
+	c.cfg = cfg
+	return nil
 }

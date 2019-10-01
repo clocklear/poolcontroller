@@ -179,17 +179,44 @@ func addScheduleHandler(cfger internal.Configurer, ctrl *internal.RelayControlle
 			return
 		}
 
-		// Set random ID on this schedule
-		u := uuid.NewV4()
-		s.ID = u.String()
+		if s.ID == "" {
+			// New schedule
+			// Set random ID on this schedule
+			u := uuid.NewV4()
+			s.ID = u.String()
 
-		// Store this in the current config
-		cfg, err := cfger.Get()
-		if err != nil {
-			errorResponse(w, err)
-			return
+			// Store this in the current config
+			cfg, err := cfger.Get()
+			if err != nil {
+				errorResponse(w, err)
+				return
+			}
+			cfg.Schedules = append(cfg.Schedules, s)
+		} else {
+			// Existing schedule
+			found := false
+			idx := -1
+			for k, v := range cfg.Schedules {
+				if v.ID == s.ID {
+					idx = k
+					found = true
+					break
+				}
+			}
+			// Did we find this thing?  If not, 404.
+			if !found {
+				jsonResponse(w, http.StatusNotFound, nil)
+				return
+			}
+			// Store this in the current config
+			cfg, err := cfger.Get()
+			if err != nil {
+				errorResponse(w, err)
+				return
+			}
+			// Replace the existing item in the cfg with our new one
+			cfg.Schedules = append(cfg.Schedules[:idx], cfg.Schedules[idx+1:]..., s)
 		}
-		cfg.Schedules = append(cfg.Schedules, s)
 
 		// Apply config, see if errors arise
 		err = ctrl.ApplyConfig(cfg)

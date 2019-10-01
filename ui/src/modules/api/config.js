@@ -7,13 +7,9 @@ const getConfig = async () => {
   return res.data;
 };
 
-const createSchedule = async (relay, expression, action) => {
+const createSchedule = async (schedule) => {
   const res = await axios.post(
-    `/config/schedules`, {
-      relay,
-      expression,
-      action
-    }
+    `/config/schedules`, schedule
   );
   return res.data;
 }
