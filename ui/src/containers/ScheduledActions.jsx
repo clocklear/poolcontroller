@@ -4,7 +4,6 @@ import {
   Pane,
   Heading,
   IconButton,
-  Strong,
   Dialog,
   FormField,
   Combobox,
@@ -81,6 +80,12 @@ class ScheduledActions extends React.Component {
       }, undefined);
     };
 
+    const getRelayName = (relays, id) => {
+      const rly = findRelayById(relays, id);
+      if (!rly) return 'Relay ' + id;
+      return rly.name;
+    };
+
     const findActionByString = (actions, str) => {
       return actions.reduce((accum, curr) => {
         if (accum) return accum;
@@ -117,8 +122,7 @@ class ScheduledActions extends React.Component {
                     {getReadableCronString(s.expression)}
                   </Heading>
                   <Heading size={100}>
-                    Turn <Strong>{s.action}</Strong> relay{' '}
-                    <Strong>{s.relay}</Strong>
+                    Turn {s.action} {getRelayName(relays, s.relay)}
                   </Heading>
                 </Pane>
                 <Pane display="flex" flexDirection="row">

@@ -17,7 +17,7 @@ class ActivityLog extends React.Component {
   render() {
     const { activity } = this.props;
     return (
-      <>
+      <Pane border="default" borderRadius={3}>
         {activity.length > 0 && (
           <>
             <Table.Head>
@@ -57,7 +57,7 @@ class ActivityLog extends React.Component {
             <Heading size={200}>No activity exists.</Heading>
           </Pane>
         )}
-      </>
+      </Pane>
     );
   }
 }

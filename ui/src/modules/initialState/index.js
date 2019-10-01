@@ -65,6 +65,12 @@ const states = {
         "relay": 1,
         "expression": "0 0 * * *",
         "action": "on"
+      },
+      {
+        "id": "67dd9103-1cb8-4830-89c4-17aaec3918aa",
+        "relay": 3,
+        "expression": "* * * ? * 2-6/2",
+        "action": "on"
       }
     ]
   }
