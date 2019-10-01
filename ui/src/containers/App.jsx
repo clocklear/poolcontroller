@@ -21,6 +21,7 @@ class App extends React.Component {
     this.saveSchedule = this.saveSchedule.bind(this)
     this.findRelayById = this.findRelayById.bind(this)
     this.findActionByString = this.findActionByString.bind(this)
+    this.removeSchedule = this.removeSchedule.bind(this)
   }
 
   async refreshRelayState() {
@@ -69,6 +70,11 @@ class App extends React.Component {
     });
   }
 
+  async removeSchedule(sId) {
+    await api.config.removeSchedule(sId)
+    this.refreshSchedules()
+  }
+
   async saveSchedule() {
     await api.config.createSchedule(this.state.editedSchedule);
     await this.refreshSchedules();
@@ -105,7 +111,7 @@ class App extends React.Component {
   }
 
   render() {
-    const { relays, isLoading, selectedTab, tabs, activity, schedules, scheduleDialogIsOpen, scheduleDialogIntent, editedSchedule } = this.state
+    const { relays, isLoading, selectedTab, tabs, activity, schedules, scheduleDialogIsOpen, scheduleDialogIntent, editedSchedule, removeScheduleDialogIsOpen, removeScheduleId } = this.state
     const TAB_RELAYSTATES = tabs[0]
     const TAB_SCHEDULES = tabs[1]
     const TAB_ACTIVITYLOG = tabs[2]
@@ -169,8 +175,9 @@ class App extends React.Component {
                           Turn <Strong>{s.action}</Strong> relay <Strong>{s.relay}</Strong>
                         </Heading>
                       </Pane>
-                      <Pane>
+                      <Pane display="flex" flexDirection="row">
                         <IconButton icon="edit" appearance="minimal" onClick={e => this.editSchedule(s)} />
+                        <IconButton icon="trash" intent="danger" appearance="minimal" onClick={e => this.setState({removeScheduleId: s.id, removeScheduleDialogIsOpen: true})} />
                       </Pane>
                     </Pane>
                   </Pane>
@@ -183,6 +190,16 @@ class App extends React.Component {
                 <Pane display="flex" marginY={16}>
                   <Button marginRight={12} iconBefore="add-to-artifact" onClick={e => this.newSchedule()}>New scheduled action</Button>
                 </Pane>
+                <Dialog 
+                  intent="danger"
+                  isShown={removeScheduleDialogIsOpen}
+                  title="Remove scheduled action?"
+                  onCloseComplete={() => this.setState({ removeScheduleDialogIsOpen: false })}
+                  onCancelComplete={() => this.setState({ removeScheduleDialogIsOpen: false })}
+                  onConfirm={() => this.removeSchedule(removeScheduleId)}
+                  confirmLabel="Remove">
+                    Are you sure you want to remove this scheduled action?
+                </Dialog>
                 <Dialog 
                   isShown={scheduleDialogIsOpen}
                   title={scheduleDialogIntent + ' scheduled action'}

@@ -8,9 +8,13 @@ const states = {
     activity: [],
     schedules: [],
     scheduleDialogIsOpen: false,
-    editedSchedule: {}
+    editedSchedule: {},
+    removeScheduleDialogIsOpen: false,
+    removeScheduleId: 0,
   },
   development: {
+    removeScheduleId: 0,
+    removeScheduleDialogIsOpen: false,
     editedSchedule: {},
     scheduleDialogIsOpen: false,
     isLoading: false,
