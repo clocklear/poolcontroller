@@ -15,7 +15,7 @@ const createSchedule = async (schedule) => {
 }
 
 const removeSchedule = async (scheduleId) => {
-  const res = await axios.post(
+  const res = await axios.delete(
     `/config/schedules/${scheduleId}`
   );
   return res.status === 204
