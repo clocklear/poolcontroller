@@ -30,6 +30,9 @@ class App extends React.Component {
     this.closeRemoveScheduleDialog = this.closeRemoveScheduleDialog.bind(this);
     this.closeEditScheduleDialog = this.closeEditScheduleDialog.bind(this);
     this.newSchedule = this.newSchedule.bind(this);
+    this.handleEditedScheduleChange = this.handleEditedScheduleChange.bind(
+      this
+    );
   }
 
   async refreshRelayState() {
@@ -74,6 +77,16 @@ class App extends React.Component {
       scheduleDialogIntent: 'Edit',
       scheduleDialogIsOpen: true,
       editedSchedule,
+    });
+  }
+
+  handleEditedScheduleChange(prop, val) {
+    const s = this.state.editedSchedule;
+    this.setState({
+      editedSchedule: {
+        ...s,
+        [prop]: val,
+      },
     });
   }
 
@@ -198,6 +211,7 @@ class App extends React.Component {
                   closeEditScheduleDialog={this.closeEditScheduleDialog}
                   newSchedule={this.newSchedule}
                   saveSchedule={this.saveSchedule}
+                  handleEditedScheduleChange={this.handleEditedScheduleChange}
                 />
               )}
             />

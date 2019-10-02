@@ -45,6 +45,7 @@ class ScheduledActions extends React.Component {
     closeEditScheduleDialog: PropTypes.func.isRequired,
     newSchedule: PropTypes.func.isRequired,
     saveSchedule: PropTypes.func.isRequired,
+    handleEditedScheduleChange: PropTypes.func.isRequired,
   };
 
   render() {
@@ -62,6 +63,7 @@ class ScheduledActions extends React.Component {
       closeEditScheduleDialog,
       newSchedule,
       saveSchedule,
+      handleEditedScheduleChange,
     } = this.props;
 
     const getReadableCronString = expr => {
@@ -187,6 +189,9 @@ class ScheduledActions extends React.Component {
                 width="100%"
                 placeholder="0 0 * * *"
                 value={editedSchedule.expression}
+                onChange={e =>
+                  handleEditedScheduleChange('expression', e.target.value)
+                }
               />
             </FormField>
             <FormField label="Relay" marginTop={10}>
@@ -194,6 +199,7 @@ class ScheduledActions extends React.Component {
                 items={relays}
                 itemToString={i => (i ? i.name : '')}
                 selectedItem={findRelayById(relays, editedSchedule.relay)}
+                onChange={i => handleEditedScheduleChange('relay', i.relay)}
                 width="100%"
               />
             </FormField>
@@ -205,6 +211,7 @@ class ScheduledActions extends React.Component {
                   actions,
                   editedSchedule.action
                 )}
+                onChange={i => handleEditedScheduleChange('action', i.value)}
                 width="100%"
               />
             </FormField>
