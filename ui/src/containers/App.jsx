@@ -60,6 +60,7 @@ class App extends React.Component {
       this.refreshActivity();
     }, 5000);
     this.setState({ isLoading: false });
+    this.refreshSchedules();
   }
   componentWillUnmount() {
     clearInterval(this.relayRefreshInterval);

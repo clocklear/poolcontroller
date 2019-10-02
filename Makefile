@@ -1,4 +1,4 @@
-PI=10.1.0.69
+PI=10.1.0.5
 
 ui:
 	cd ./ui && yarn build
