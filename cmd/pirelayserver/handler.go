@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	// "github.com/go-kit/kit/log"
 	"github.com/clocklear/pirelayserver/cmd/pirelayserver/internal"
@@ -40,6 +41,24 @@ func errorResponse(w http.ResponseWriter, err error) error {
 	return jsonResponse(w, http.StatusInternalServerError, b)
 }
 
+func cacheHeaders(paths []string, cacheTime uint32, h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hd := w.Header()
+		match := false
+		for _, v := range paths {
+			if strings.HasPrefix(r.URL.Path, v) {
+				hd.Add("Cache-Control", fmt.Sprintf("max-age=%v", cacheTime))
+				match = true
+				break
+			}
+		}
+		if !match {
+			hd.Add("Cache-Control", "no-cache")
+		}
+		h.ServeHTTP(w, r)
+	})
+}
+
 func getHandler(cfger internal.Configurer, ctrl *internal.RelayController, el *internal.EventLogger) http.Handler {
 	r := mux.NewRouter()
 
@@ -52,9 +71,10 @@ func getHandler(cfger internal.Configurer, ctrl *internal.RelayController, el *i
 	r.HandleFunc("/events", getEventsHandler(el)).Methods(http.MethodGet)
 
 	// Set up handler for web ui
+	cachedPaths := []string{"/static"}
 	box := packr.NewBox("../../ui/build")
 	r.PathPrefix("/").Handler(
-		http.StripPrefix("/", http.FileServer(box)),
+		cacheHeaders(cachedPaths, 31536000, http.StripPrefix("/", http.FileServer(box))),
 	)
 
 	return r

@@ -1,9 +1,9 @@
 import React from 'react';
 import { Pane, Spinner, Heading, Tab, TabNavigation } from 'evergreen-ui';
 import { connect } from 'react-redux';
-import api from '../modules/api';
+import api from 'modules/api';
 import sizes from 'react-sizes';
-import initialState from '../modules/initialState';
+import initialState from 'modules/initialState';
 import RelayStates from './RelayStates';
 import ScheduledActions from './ScheduledActions';
 import ActivityLog from './ActivityLog';
