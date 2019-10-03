@@ -109,7 +109,8 @@ class ScheduledActions extends React.Component {
 
     return (
       <>
-        {schedules.length > 0 &&
+        {schedules &&
+          schedules.length > 0 &&
           schedules.map(s => (
             <Pane
               key={s.id}
@@ -143,7 +144,7 @@ class ScheduledActions extends React.Component {
               </Pane>
             </Pane>
           ))}
-        {schedules.length === 0 && (
+        {(!schedules || schedules.length === 0) && (
           <Pane
             flex={1}
             alignItems="center"

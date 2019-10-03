@@ -1,1 +1,1 @@
-{"schedules":null,"relayNames":null}
+{"schedules":[{"id":"e535f45c-a46f-4bf2-9b09-16ca4c418fa3","relay":1,"expression":"0 5 * * *","action":"off"}],"relayNames":null}

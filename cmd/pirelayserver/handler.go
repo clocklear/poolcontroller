@@ -199,7 +199,13 @@ func addScheduleHandler(cfger internal.Configurer, ctrl *internal.RelayControlle
 			return
 		}
 
-		var cfg internal.Config
+		// Load current config
+		cfg, err := cfger.Get()
+		if err != nil {
+			errorResponse(w, err)
+			return
+		}
+
 		if s.ID == "" {
 			// New schedule
 			// Set random ID on this schedule
@@ -207,11 +213,6 @@ func addScheduleHandler(cfger internal.Configurer, ctrl *internal.RelayControlle
 			s.ID = u.String()
 
 			// Store this in the current config
-			cfg, err = cfger.Get()
-			if err != nil {
-				errorResponse(w, err)
-				return
-			}
 			cfg.Schedules = append(cfg.Schedules, s)
 		} else {
 			// Existing schedule

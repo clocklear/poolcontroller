@@ -58,7 +58,10 @@ func WithJsonConfigurer(filename string) (Configurer, error) {
 	_, err := os.Stat(filename)
 	if os.IsNotExist(err) {
 		// Create a blank config and persist it
-		err = c.Set(Config{})
+		err = c.Set(Config{
+			Schedules:  []Schedule{},
+			RelayNames: make(map[uint8]string),
+		})
 		if err != nil {
 			return nil, err
 		}
