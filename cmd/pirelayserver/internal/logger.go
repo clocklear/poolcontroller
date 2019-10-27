@@ -51,7 +51,8 @@ func (l *EventLogger) Log(msg string) error {
 	l.events = append(l.events, &e)
 	// Prune
 	if len(l.events) > int(l.capacity) {
-		l.events = l.events[:len(l.events)-1]
+		// Take the back <l.capacity> events from the slice
+		l.events = l.events[len(l.events)-int(l.capacity):]
 	}
 	// Write
 	eventsFile, err := os.OpenFile(l.filename, os.O_RDWR|os.O_CREATE, os.ModePerm)
