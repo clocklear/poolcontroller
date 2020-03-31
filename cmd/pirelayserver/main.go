@@ -26,6 +26,15 @@ type errResponse struct {
 
 func main() {
 
+	// Logging.
+	var logger log.Logger
+	{
+		logger = log.NewLogfmtLogger(os.Stderr)
+		logger = log.With(logger, "ts", log.DefaultTimestampUTC)
+		logger = log.With(logger, "caller", log.DefaultCaller)
+	}
+	logger.Log("msg", "Server starting")
+
 	// Config.
 	var (
 		httpAddr       = flag.String("http.addr", ":3000", "HTTP listen address")
@@ -34,14 +43,7 @@ func main() {
 		eventsCapacity = flag.Int("events.capacity", 100, "Number of events to keep in events file")
 	)
 	flag.Parse()
-
-	// Logging.
-	var logger log.Logger
-	{
-		logger = log.NewLogfmtLogger(os.Stderr)
-		logger = log.With(logger, "ts", log.DefaultTimestampUTC)
-		logger = log.With(logger, "caller", log.DefaultCaller)
-	}
+	logger.Log("msg", "Parsed config")
 
 	// Mechanical.
 	errc := make(chan error)
@@ -54,6 +56,7 @@ func main() {
 		signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
 		errc <- fmt.Errorf("%s", <-c)
 	}()
+	logger.Log("msg", "Set up interrupt")
 
 	// Events logger
 	el, err := internal.WithEventLogger(*eventsFile, uint16(*eventsCapacity))
@@ -61,6 +64,7 @@ func main() {
 		errc <- err
 		return
 	}
+	logger.Log("msg", "Init events logger")
 
 	// App.
 	go func() {
@@ -68,6 +72,7 @@ func main() {
 		logger.Log("addr", *httpAddr)
 
 		// Configurer
+		logger.Log("msg", "Init configurer")
 		cfger, err := internal.WithJsonConfigurer(*configFile)
 		if err != nil {
 			errc <- err
@@ -75,6 +80,7 @@ func main() {
 		}
 
 		// Relay controller
+		logger.Log("msg", "Init relay controller")
 		ctrl, err := internal.NewRelayController(logger, []uint8{pinRelay1, pinRelay2, pinRelay3}, cfger, el)
 		if err != nil {
 			errc <- err
@@ -88,11 +94,13 @@ func main() {
 		srv.WriteTimeout = time.Second * 30
 
 		el.Log("Server booted up")
+		logger.Log("msg", "Starting web app")
 
 		errc <- srv.ListenAndServe()
 	}()
 
 	// Run.
+	logger.Log("msg", "Transferring control to web app")
 	logger.Log("exit", <-errc)
 	el.Log("Server shutdown cleanly")
 }
