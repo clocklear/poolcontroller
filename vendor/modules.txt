@@ -1,3 +1,12 @@
+# github.com/auth0/go-jwt-middleware v0.0.0-20190805220309-36081240882b
+## explicit
+github.com/auth0/go-jwt-middleware
+# github.com/coreos/go-oidc v2.2.1+incompatible
+## explicit
+github.com/coreos/go-oidc
+# github.com/dgrijalva/jwt-go v3.2.0+incompatible
+## explicit
+github.com/dgrijalva/jwt-go
 # github.com/go-kit/kit v0.9.0
 ## explicit
 github.com/go-kit/kit/log
@@ -20,6 +29,8 @@ github.com/gocarina/gocsv
 # github.com/golang/mock v1.3.1
 ## explicit
 github.com/golang/mock/gomock
+# github.com/golang/protobuf v1.2.0
+github.com/golang/protobuf/proto
 # github.com/gorilla/mux v1.7.3
 ## explicit
 github.com/gorilla/mux
@@ -27,6 +38,10 @@ github.com/gorilla/mux
 github.com/joho/godotenv
 # github.com/kr/logfmt v0.0.0-20140226030751-b84e30acd515
 github.com/kr/logfmt
+# github.com/pquerna/cachecontrol v0.0.0-20180517163645-1555304b9b35
+## explicit
+github.com/pquerna/cachecontrol
+github.com/pquerna/cachecontrol/cacheobject
 # github.com/robfig/cron/v3 v3.0.0
 ## explicit
 github.com/robfig/cron/v3
@@ -40,5 +55,29 @@ github.com/satori/go.uuid
 # github.com/stianeikeland/go-rpio/v4 v4.4.0
 ## explicit
 github.com/stianeikeland/go-rpio/v4
+# golang.org/x/crypto v0.0.0-20190621222207-cc06ce4a13d4
+golang.org/x/crypto/ed25519
+golang.org/x/crypto/ed25519/internal/edwards25519
+golang.org/x/crypto/pbkdf2
+# golang.org/x/net v0.0.0-20190404232315-eb5bcb51f2a3
+golang.org/x/net/context
+golang.org/x/net/context/ctxhttp
+# golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
+## explicit
+golang.org/x/oauth2
+golang.org/x/oauth2/internal
+# google.golang.org/appengine v1.4.0
+google.golang.org/appengine/internal
+google.golang.org/appengine/internal/base
+google.golang.org/appengine/internal/datastore
+google.golang.org/appengine/internal/log
+google.golang.org/appengine/internal/remote_api
+google.golang.org/appengine/internal/urlfetch
+google.golang.org/appengine/urlfetch
 # gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15
 ## explicit
+# gopkg.in/square/go-jose.v2 v2.4.1
+## explicit
+gopkg.in/square/go-jose.v2
+gopkg.in/square/go-jose.v2/cipher
+gopkg.in/square/go-jose.v2/json

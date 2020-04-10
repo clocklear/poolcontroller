@@ -4,7 +4,7 @@ import { PersistGate } from 'redux-persist/integration/react';
 import { Provider } from 'react-redux';
 import { App } from './containers';
 import { persistor, store } from './store';
-import { HashRouter as Router } from 'react-router-dom';
+import { BrowserRouter as Router } from 'react-router-dom';
 
 import './index.css';
 
@@ -13,8 +13,8 @@ ReactDOM.render(
     <PersistGate loading={null} persistor={persistor}>
       <Router>
         <App />
-      </Router>
-    </PersistGate>
+      </Router>{' '}
+    </PersistGate>{' '}
   </Provider>,
   document.getElementById('root')
 );

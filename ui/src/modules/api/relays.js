@@ -1,15 +1,16 @@
-import axios from 'axios'
+import axios from 'modules/xhr';
+import config from 'modules/config';
 
 const getRelays = async () => {
   const res = await axios.get(
-    `/relays`
+    `${config.apiRoot}/relays`
   );
   return res.data.relayStates;
 };
 
 const toggleRelay = async (relay) => {
   const res = await axios.post(
-    `/relays/${relay}/toggle`
+    `${config.apiRoot}/relays/${relay}/toggle`
   );
   return res.data.relayStates;
 }

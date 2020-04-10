@@ -40,6 +40,7 @@ func main() {
 		httpAddr       = flag.String("http.addr", ":3000", "HTTP listen address")
 		configFile     = flag.String("config.file", "config.json", "Configuration file")
 		eventsFile     = flag.String("events.file", "events.csv", "Events log")
+		devMode        = flag.Bool("dev", false, "When enabled, a stub relay implementation is used")
 		eventsCapacity = flag.Int("events.capacity", 100, "Number of events to keep in events file")
 	)
 	flag.Parse()
@@ -80,8 +81,15 @@ func main() {
 		}
 
 		// Relay controller
-		logger.Log("msg", "Init relay controller")
-		ctrl, err := internal.NewRelayController(logger, []uint8{pinRelay1, pinRelay2, pinRelay3}, cfger, el)
+
+		var ctrl internal.RelayController
+		if *devMode {
+			logger.Log("msg", "Dev mode, init stub relay controller")
+			ctrl, err = internal.NewStubRelayController(logger, 3, cfger, el)
+		} else {
+			logger.Log("msg", "Init relay controller")
+			ctrl, err = internal.NewPiRelayController(logger, []uint8{pinRelay1, pinRelay2, pinRelay3}, cfger, el)
+		}
 		if err != nil {
 			errc <- err
 			return

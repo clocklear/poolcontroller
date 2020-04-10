@@ -1,8 +1,9 @@
-import axios from 'axios'
+import axios from 'modules/xhr';
+import config from 'modules/config';
 
 const getEvents = async () => {
   const res = await axios.get(
-    `/events`
+    `${config.apiRoot}/events`
   );
   return res.data;
 };
