@@ -6,6 +6,7 @@ import { Alert, Pane, Spinner } from 'evergreen-ui';
 
 import userActions from 'actions/user';
 import api from 'modules/api';
+import { Scopes } from '../../constants';
 
 class Auth0Receiver extends React.Component {
   constructor(props) {
@@ -28,6 +29,12 @@ class Auth0Receiver extends React.Component {
       const { accessToken, profile } = result;
       dispatch(userActions.loginSuccess(accessToken));
       dispatch(userActions.setUser(profile));
+      const me = await api.auth.me();
+      if (me.permissions && me.permissions.indexOf(Scopes.READ_ME) > -1) {
+        dispatch(userActions.setUserPermissions(me.permissions));
+      } else {
+        dispatch(userActions.setInvalidUser());
+      }
     }
 
     if (error) {

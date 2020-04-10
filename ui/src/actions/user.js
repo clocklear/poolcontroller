@@ -21,6 +21,17 @@ export default {
     },
   }),
 
+  setUserPermissions: permissions => ({
+    type: ActionTypes.SET_USER_PERMISSIONS,
+    payload: {
+      permissions
+    }
+  }),
+
+  setInvalidUser: () => ({
+    type: ActionTypes.SET_INVALID_USER,
+  }),
+
   clearUser: () => ({
     type: ActionTypes.CLEAR_USER,
   }),

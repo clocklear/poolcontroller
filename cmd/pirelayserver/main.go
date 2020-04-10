@@ -97,7 +97,7 @@ func main() {
 
 		// Server config
 		srv.Addr = *httpAddr
-		srv.Handler = getHandler(cfger, ctrl, el)
+		srv.Handler = getHandler(cfger, ctrl, el, logger)
 		srv.ReadTimeout = time.Second * 30
 		srv.WriteTimeout = time.Second * 30
 

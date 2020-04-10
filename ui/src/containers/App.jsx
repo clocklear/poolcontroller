@@ -14,7 +14,7 @@ import { Route, Switch } from 'react-router-dom';
 import { withRouter } from 'react-router';
 import sizes from 'react-sizes';
 import Nav from './Nav';
-import { Login } from 'components';
+import { Login, AccessDenied } from 'components';
 import { Auth0Receiver } from 'components/auth';
 import userActions from 'actions/user';
 
@@ -49,11 +49,12 @@ class App extends React.Component {
   render() {
     const isAuthenticated = this.isAuthenticated();
     const { user } = this.props;
+    const { isInvalid } = user;
 
     return (
       <Pane margin="auto" maxWidth={800} padding={16}>
         <Pane display="flex">
-          {isAuthenticated && (
+          {isAuthenticated && !isInvalid && (
             <>
               <Pane flex={1} alignItems="center" display="flex">
                 {!this.props.isMobile && (
@@ -88,6 +89,7 @@ class App extends React.Component {
         </Pane>
         <Switch>
           <Route path="/callbacks/auth0" component={Auth0Receiver} />
+          {isInvalid && <Route component={AccessDenied} />}
           {isAuthenticated && <Route component={Nav} />}
           {!isAuthenticated && <Route component={Login} />}
         </Switch>

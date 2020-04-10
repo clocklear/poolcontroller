@@ -10,9 +10,9 @@ import (
 	"strconv"
 	"strings"
 
-	// "github.com/go-kit/kit/log"
 	"github.com/clocklear/pirelayserver/cmd/pirelayserver/internal"
 	"github.com/clocklear/pirelayserver/cmd/pirelayserver/internal/auth"
+	"github.com/go-kit/kit/log"
 
 	jwtmiddleware "github.com/auth0/go-jwt-middleware"
 	"github.com/coreos/go-oidc"
@@ -73,9 +73,9 @@ func cacheHeaders(paths []string, cacheTime uint32, h http.Handler) http.Handler
 	})
 }
 
-func getHandler(cfger internal.Configurer, ctrl internal.RelayController, el *internal.EventLogger) http.Handler {
+func getHandler(cfger internal.Configurer, ctrl internal.RelayController, el *internal.EventLogger, l log.Logger) http.Handler {
 	r := mux.NewRouter()
-	r.HandleFunc("/oauth/exchange", getOAuthExchangeHandler()).Methods(http.MethodGet)
+	r.HandleFunc("/oauth/exchange", getOAuthExchangeHandler(l)).Methods(http.MethodGet)
 
 	// Set up router for api routes
 	apiRouter := r.PathPrefix("/api").Subrouter()
@@ -139,27 +139,29 @@ func getMeHandler() func(http.ResponseWriter, *http.Request) {
 			jsonResponse(w, http.StatusUnauthorized, nil)
 		}
 		json.NewEncoder(w).Encode(user.Claims)
-		w.WriteHeader(http.StatusOK)
 	}
 }
 
-func getOAuthExchangeHandler() func(http.ResponseWriter, *http.Request) {
+func getOAuthExchangeHandler(l log.Logger) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		authenticator, err := auth.NewAuthenticator()
 		if err != nil {
+			l.Log("err", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
 		token, err := authenticator.Config.Exchange(context.TODO(), r.URL.Query().Get("code"))
 		if err != nil {
+			l.Log("err", err)
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
 
 		rawIDToken, ok := token.Extra("id_token").(string)
 		if !ok {
+			l.Log("err", "No id_token field in oauth2 token.")
 			http.Error(w, "No id_token field in oauth2 token.", http.StatusInternalServerError)
 			return
 		}
@@ -171,6 +173,7 @@ func getOAuthExchangeHandler() func(http.ResponseWriter, *http.Request) {
 		idToken, err := authenticator.Provider.Verifier(oidcConfig).Verify(context.TODO(), rawIDToken)
 
 		if err != nil {
+			l.Log("err", err)
 			http.Error(w, "Failed to verify ID Token: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -178,6 +181,7 @@ func getOAuthExchangeHandler() func(http.ResponseWriter, *http.Request) {
 		// Getting now the userInfo
 		var profile map[string]interface{}
 		if err := idToken.Claims(&profile); err != nil {
+			l.Log("err", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
