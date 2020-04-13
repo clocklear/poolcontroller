@@ -73,20 +73,52 @@ func cacheHeaders(paths []string, cacheTime uint32, h http.Handler) http.Handler
 	})
 }
 
+func withScope(scope string, next func(http.ResponseWriter, *http.Request)) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Extract claims, check required scope
+		user, ok := r.Context().Value("user").(*jwt.Token)
+		if !ok {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+		rawPermissions, ok := user.Claims.(jwt.MapClaims)["permissions"].([]interface{})
+		if !ok {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		hasScope := false
+		if ok && user.Valid {
+			for i := range rawPermissions {
+				if rawPermissions[i].(string) == scope {
+					hasScope = true
+				}
+			}
+		}
+
+		if !hasScope {
+			http.Error(w, "forbidden", http.StatusForbidden)
+			return
+		}
+
+		next(w, r)
+	}
+}
+
 func getHandler(cfger internal.Configurer, ctrl internal.RelayController, el *internal.EventLogger, l log.Logger) http.Handler {
 	r := mux.NewRouter()
 	r.HandleFunc("/oauth/exchange", getOAuthExchangeHandler(l)).Methods(http.MethodGet)
 
 	// Set up router for api routes
 	apiRouter := r.PathPrefix("/api").Subrouter()
-	apiRouter.HandleFunc("/relays", relayStatusHandler(ctrl)).Methods(http.MethodGet)
-	apiRouter.HandleFunc("/relays/{relay}/toggle", toggleRelayHandler(ctrl)).Methods(http.MethodPost)
-	apiRouter.HandleFunc("/config", getConfigHandler(cfger)).Methods(http.MethodGet)
-	apiRouter.HandleFunc("/config/schedules", addScheduleHandler(cfger, ctrl)).Methods(http.MethodPost)
-	apiRouter.HandleFunc("/config/relay/{relay}/name", setRelayNameHandler(cfger, ctrl)).Methods(http.MethodPost)
-	apiRouter.HandleFunc("/config/schedules/{id}", removeScheduleHandler(cfger, ctrl)).Methods(http.MethodDelete)
-	apiRouter.HandleFunc("/events", getEventsHandler(el)).Methods(http.MethodGet)
-	apiRouter.HandleFunc("/me", getMeHandler()).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/relays", withScope(internal.ReadRelays, relayStatusHandler(ctrl))).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/relays/{relay}/toggle", withScope(internal.WriteRelayToggle, toggleRelayHandler(ctrl))).Methods(http.MethodPost)
+	apiRouter.HandleFunc("/config", withScope(internal.ReadConfig, getConfigHandler(cfger))).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/config/schedules", withScope(internal.WriteConfigSchedules, addScheduleHandler(cfger, ctrl))).Methods(http.MethodPost)
+	apiRouter.HandleFunc("/config/relay/{relay}/name", withScope(internal.WriteRelayName, setRelayNameHandler(cfger, ctrl))).Methods(http.MethodPost)
+	apiRouter.HandleFunc("/config/schedules/{id}", withScope(internal.WriteConfigSchedules, removeScheduleHandler(cfger, ctrl))).Methods(http.MethodDelete)
+	apiRouter.HandleFunc("/events", withScope(internal.ReadEvents, getEventsHandler(el))).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/me", withScope(internal.ReadMe, getMeHandler())).Methods(http.MethodGet)
 
 	// Apply JWT middleware to all the API routes
 	jwtMiddleware := jwtmiddleware.New(jwtmiddleware.Options{
