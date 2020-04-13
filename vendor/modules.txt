@@ -35,6 +35,7 @@ github.com/golang/protobuf/proto
 ## explicit
 github.com/gorilla/mux
 # github.com/joho/godotenv v1.3.0
+## explicit
 github.com/joho/godotenv
 # github.com/kr/logfmt v0.0.0-20140226030751-b84e30acd515
 github.com/kr/logfmt

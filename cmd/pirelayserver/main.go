@@ -11,7 +11,9 @@ import (
 	"time"
 
 	"github.com/clocklear/pirelayserver/cmd/pirelayserver/internal"
+
 	"github.com/go-kit/kit/log"
+	"github.com/joho/godotenv"
 )
 
 const (
@@ -34,6 +36,13 @@ func main() {
 		logger = log.With(logger, "caller", log.DefaultCaller)
 	}
 	logger.Log("msg", "Server starting")
+
+	// .env
+	err := godotenv.Load()
+	if err != nil {
+		logger.Log("err", err)
+		os.Exit(1)
+	}
 
 	// Config.
 	var (
@@ -81,7 +90,6 @@ func main() {
 		}
 
 		// Relay controller
-
 		var ctrl internal.RelayController
 		if *devMode {
 			logger.Log("msg", "Dev mode, init stub relay controller")

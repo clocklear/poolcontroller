@@ -13,6 +13,7 @@ require (
 	github.com/gocarina/gocsv v0.0.0-20190919154618-09be0c8175b6
 	github.com/golang/mock v1.3.1
 	github.com/gorilla/mux v1.7.3
+	github.com/joho/godotenv v1.3.0
 	github.com/pquerna/cachecontrol v0.0.0-20180517163645-1555304b9b35 // indirect
 	github.com/robfig/cron/v3 v3.0.0
 	github.com/satori/go.uuid v1.2.0
