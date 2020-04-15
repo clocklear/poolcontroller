@@ -7,8 +7,9 @@ import { RelayStates, ScheduledActions, ActivityLog } from 'components';
 import { Route, Link, Switch } from 'react-router-dom';
 import { withRouter } from 'react-router';
 import PropTypes from 'prop-types';
+// import logo from 'assets/logo.svg';
 
-class Nav extends React.Component {
+class Controller extends React.Component {
   static propTypes = {
     match: PropTypes.object.isRequired,
     location: PropTypes.object.isRequired,
@@ -148,6 +149,16 @@ class Nav extends React.Component {
       { name: 'Activity Log', route: '/activity' },
     ];
 
+    // Was attempting to put the logo in the background subtlely, but
+    // need to tweak the opacity/alpha...
+    // const containerStyle = {
+    //   backgroundImage: `url(${logo})`,
+    //   backgroundRepeat: "no-repeat",
+    //   backgroundPositionY: "bottom",
+    //   backgroundPositionX: "right",
+    //   backgroundSize: 384,
+    // };
+
     return (
       <Pane>
         <TabNavigation marginY={16} flexBasis={240} marginRight={24}>
@@ -224,4 +235,4 @@ const mapStateToProps = () => {
   return {};
 };
 
-export default connect(mapStateToProps)(withRouter(Nav));
+export default connect(mapStateToProps)(withRouter(Controller));

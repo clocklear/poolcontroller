@@ -1,22 +1,15 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import {
-  Avatar,
-  Pane,
-  Popover,
-  Menu,
-  Heading,
-  Button,
-  Position,
-} from 'evergreen-ui';
+import { Pane } from 'evergreen-ui';
 import { connect } from 'react-redux';
-import { Route, Switch } from 'react-router-dom';
+import { Route, Switch, Redirect } from 'react-router-dom';
 import { withRouter } from 'react-router';
 import sizes from 'react-sizes';
-import Nav from './Nav';
-import { Login, AccessDenied } from 'components';
+import Controller from './Controller';
+import { Login, AccessDenied, Header } from 'components';
 import { Auth0Receiver } from 'components/auth';
 import userActions from 'actions/user';
+import api from 'modules/api';
 
 class App extends React.Component {
   static propTypes = {
@@ -42,6 +35,9 @@ class App extends React.Component {
   }
 
   logout() {
+    // Logout of auth0
+    api.auth.logout();
+    // and destroy our local user
     const { dispatch } = this.props;
     dispatch(userActions.clearUser());
   }
@@ -53,45 +49,19 @@ class App extends React.Component {
 
     return (
       <Pane margin="auto" maxWidth={800} padding={16}>
-        <Pane display="flex">
-          {isAuthenticated && !isInvalid && (
-            <>
-              <Pane flex={1} alignItems="center" display="flex">
-                {!this.props.isMobile && (
-                  <Heading paddingY={16} size={700}>
-                    Pool Controller
-                  </Heading>
-                )}
-              </Pane>
-              <Pane display="flex" justifyContent="center" alignItems="center">
-                <Popover
-                  position={Position.BOTTOM_RIGHT}
-                  content={
-                    <Menu>
-                      <Menu.Group>
-                        <Menu.Item icon="log-out" onSelect={this.logout}>
-                          Logout
-                        </Menu.Item>
-                      </Menu.Group>
-                    </Menu>
-                  }>
-                  <Button
-                    appearance="minimal"
-                    height={50}
-                    paddingLeft={5}
-                    paddingRight={5}>
-                    <Avatar src={user.picture} name={user.name} size={40} />
-                  </Button>
-                </Popover>
-              </Pane>
-            </>
-          )}
-        </Pane>
+        {!isInvalid && (
+          <Header
+            user={user}
+            onLogout={this.logout}
+            isAuthenticated={isAuthenticated}
+          />
+        )}
         <Switch>
           <Route path="/callbacks/auth0" component={Auth0Receiver} />
           {isInvalid && <Route component={AccessDenied} />}
-          {isAuthenticated && <Route component={Nav} />}
-          {!isAuthenticated && <Route component={Login} />}
+          <Route path="/auth/login" component={Login} />
+          {!isAuthenticated && <Redirect to="/auth/login" />}
+          {isAuthenticated && <Route component={Controller} />}
         </Switch>
       </Pane>
     );

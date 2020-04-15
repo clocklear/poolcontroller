@@ -2,7 +2,7 @@ import axios from 'axios';
 import {
   store
 } from 'store';
-// import alert from './alert';
+import alert from './alert';
 
 const local = axios.create();
 
@@ -25,13 +25,13 @@ local.interceptors.request.use(requestInterceptor, err => {
   return Promise.reject(err);
 });
 
-// const responseInterceptor = res => res;
+const responseInterceptor = res => res;
 
-// local.interceptors.response.use(responseInterceptor, err => {
-//   if (err.response) {
-//     alert(err.response.status);
-//   }
-//   return Promise.reject(err);
-// });
+local.interceptors.response.use(responseInterceptor, err => {
+  if (err.response) {
+    alert(err.response.status);
+  }
+  return Promise.reject(err);
+});
 
 export default local;

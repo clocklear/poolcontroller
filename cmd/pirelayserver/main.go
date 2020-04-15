@@ -39,9 +39,13 @@ func main() {
 
 	// .env
 	err := godotenv.Load()
-	if err != nil {
-		logger.Log("err", err)
-		os.Exit(1)
+	if os.IsNotExist(err) {
+		logger.Log("msg", "no .env found, skipping load")
+	} else {
+		if err != nil {
+			logger.Log("err", err)
+			os.Exit(1)
+		}
 	}
 
 	// Config.

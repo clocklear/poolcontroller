@@ -14,7 +14,13 @@ const me = async () => {
   return res.data;
 }
 
+const logout = async () => {
+  const res = await axios.get(`${config.auth0.url}/v2/logout`);
+  return res.data;
+}
+
 export default {
   auth0Exchange,
   me,
+  logout,
 };
