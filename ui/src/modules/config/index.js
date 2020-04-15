@@ -8,7 +8,8 @@ const config = {
       audience: 'poolcontroller-production-lockleartech-com',
       clientId: 'nGygsp5QXEDZ4TpGrq2k7qs3a7erUcJF',
       redirectUri: 'https://poolcontroller.lockleartech.com/callbacks/auth0',
-      url: 'https://lockleartech.auth0.com',
+      logoutReturnToUri: 'https://poolcontroller.lockleartech.com/auth/logout',
+      domain: 'lockleartech.auth0.com',
     },
   },
   development: {
@@ -17,7 +18,8 @@ const config = {
       audience: 'poolcontroller-development-lockleartech-com',
       clientId: 'nGygsp5QXEDZ4TpGrq2k7qs3a7erUcJF',
       redirectUri: 'http://localhost:3001/callbacks/auth0',
-      url: 'https://lockleartech.auth0.com',
+      logoutReturnToUri: 'http://localhost:3001/auth/logout',
+      domain: 'lockleartech.auth0.com',
     },
   },
 };

@@ -6,10 +6,17 @@ import { Route, Switch, Redirect } from 'react-router-dom';
 import { withRouter } from 'react-router';
 import sizes from 'react-sizes';
 import Controller from './Controller';
-import { Login, AccessDenied, Header } from 'components';
+import { Login, Logout, AccessDenied, Header } from 'components';
 import { Auth0Receiver } from 'components/auth';
-import userActions from 'actions/user';
-import api from 'modules/api';
+import auth0 from 'auth0-js';
+import config from 'modules/config';
+
+const auth0Client = new auth0.WebAuth({
+  domain: config.auth0.domain,
+  clientID: config.auth0.clientId,
+  audience: config.auth0.audience,
+  redirectUri: config.auth0.redirectUri,
+});
 
 class App extends React.Component {
   static propTypes = {
@@ -36,10 +43,9 @@ class App extends React.Component {
 
   logout() {
     // Logout of auth0
-    api.auth.logout();
-    // and destroy our local user
-    const { dispatch } = this.props;
-    dispatch(userActions.clearUser());
+    auth0Client.logout({
+      returnTo: `${config.auth0.logoutReturnToUri}`,
+    });
   }
 
   render() {
@@ -58,8 +64,15 @@ class App extends React.Component {
         )}
         <Switch>
           <Route path="/callbacks/auth0" component={Auth0Receiver} />
-          {isInvalid && <Route component={AccessDenied} />}
           <Route path="/auth/login" component={Login} />
+          <Route path="/auth/logout" component={Logout} />
+          {isInvalid && (
+            <Route
+              render={(props) => (
+                <AccessDenied {...props} onLogout={this.logout}></AccessDenied>
+              )}
+            />
+          )}
           {!isAuthenticated && <Redirect to="/auth/login" />}
           {isAuthenticated && <Route component={Controller} />}
         </Switch>

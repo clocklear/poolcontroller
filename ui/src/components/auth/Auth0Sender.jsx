@@ -16,7 +16,9 @@ class Auth0Sender extends React.Component {
 
   onClick = () => {
     const scopes = ['openid', 'profile', 'email'];
-    const href = `${config.auth0.url}/authorize?response_type=code&client_id=${
+    const href = `https://${
+      config.auth0.domain
+    }/authorize?response_type=code&client_id=${
       config.auth0.clientId
     }&redirect_uri=${config.auth0.redirectUri}&audience=${
       config.auth0.audience
