@@ -4,3 +4,4 @@ build
 node_modules
 config.json
 events.csv
+.env

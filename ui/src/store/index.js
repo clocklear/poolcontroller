@@ -1,7 +1,4 @@
 import {
-  createBrowserHistory
-} from 'history';
-import {
   createStore,
   applyMiddleware,
   compose
@@ -13,8 +10,6 @@ import {
 import storage from 'redux-persist/lib/storage';
 
 import rootReducer from 'reducers';
-
-export const history = createBrowserHistory();
 
 const persistConfig = {
   key: 'pirelayserver',

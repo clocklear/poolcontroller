@@ -105,9 +105,9 @@ func withScope(scope string, next func(http.ResponseWriter, *http.Request)) func
 	}
 }
 
-func jwtError(w http.ResponseWriter, r *http.Request, err string) {
-	http.Error(w, err, http.StatusForbidden)
-}
+// func jwtError(w http.ResponseWriter, r *http.Request, err string) {
+// 	http.Error(w, err, http.StatusForbidden)
+// }
 
 func getHandler(cfger internal.Configurer, ctrl internal.RelayController, el *internal.EventLogger, l log.Logger) http.Handler {
 	r := mux.NewRouter()
@@ -126,7 +126,7 @@ func getHandler(cfger internal.Configurer, ctrl internal.RelayController, el *in
 
 	// Apply JWT middleware to all the API routes
 	jwtMiddleware := jwtmiddleware.New(jwtmiddleware.Options{
-		ErrorHandler: jwtError,
+		// ErrorHandler: jwtError,
 		Extractor: jwtmiddleware.FromFirst(jwtmiddleware.FromAuthHeader,
 			jwtmiddleware.FromParameter("auth_code")),
 		ValidationKeyGetter: func(token *jwt.Token) (interface{}, error) {

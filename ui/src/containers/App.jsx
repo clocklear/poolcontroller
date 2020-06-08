@@ -10,6 +10,7 @@ import { Login, Logout, AccessDenied, Header } from 'components';
 import { Auth0Receiver } from 'components/auth';
 import auth0 from 'auth0-js';
 import config from 'modules/config';
+import jwt from 'jsonwebtoken';
 
 const auth0Client = new auth0.WebAuth({
   domain: config.auth0.domain,
@@ -31,6 +32,7 @@ class App extends React.Component {
     super(props);
 
     this.isAuthenticated = this.isAuthenticated.bind(this);
+    this.isInvalid = this.isInvalid.bind(this);
     this.logout = this.logout.bind(this);
   }
 
@@ -38,7 +40,20 @@ class App extends React.Component {
     const {
       user: { accessToken },
     } = this.props;
+    // No token means we are unauthenticated
     return accessToken !== '';
+  }
+
+  isInvalid() {
+    const { user } = this.props;
+    if (!user) return true;
+    const { accessToken } = user;
+    if (!accessToken) return true;
+    // Basic check against expiration time
+    const decodedToken = jwt.decode(accessToken, { complete: true });
+    const dateNow = new Date().getTime();
+    const expAt = decodedToken.payload.exp * 1000;
+    return expAt < dateNow;
   }
 
   logout() {
@@ -51,7 +66,7 @@ class App extends React.Component {
   render() {
     const isAuthenticated = this.isAuthenticated();
     const { user } = this.props;
-    const { isInvalid } = user;
+    const isInvalid = this.isInvalid();
 
     return (
       <Pane margin="auto" maxWidth={800} padding={16}>
@@ -63,18 +78,26 @@ class App extends React.Component {
           />
         )}
         <Switch>
-          <Route path="/callbacks/auth0" component={Auth0Receiver} />
-          <Route path="/auth/login" component={Login} />
-          <Route path="/auth/logout" component={Logout} />
+          <Route path="/callbacks/auth0">
+            <Auth0Receiver />
+          </Route>
+          <Route path="/auth/login">
+            <Login />
+          </Route>
+          <Route path="/auth/logout">
+            <Logout />
+          </Route>
           {isInvalid && (
-            <Route
-              render={(props) => (
-                <AccessDenied {...props} onLogout={this.logout}></AccessDenied>
-              )}
-            />
+            <Route>
+              <AccessDenied onLogout={this.logout}></AccessDenied>
+            </Route>
           )}
           {!isAuthenticated && <Redirect to="/auth/login" />}
-          {isAuthenticated && <Route component={Controller} />}
+          {isAuthenticated && (
+            <Route>
+              <Controller />
+            </Route>
+          )}
         </Switch>
       </Pane>
     );

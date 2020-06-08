@@ -1,7 +1,7 @@
 import {
   toaster
 } from 'evergreen-ui';
-import history from './history';
+
 
 const alert = (status) => {
   if (status === 400) {
@@ -9,9 +9,6 @@ const alert = (status) => {
       id: 'bad-request',
       description: 'Your submission was either invalid or incomplete, please correct the form and try again.',
     });
-  }
-  if (status === 401) {
-    history.push('/auth/login');
   }
   if (status === 403) {
     toaster.danger('Access Denied', {

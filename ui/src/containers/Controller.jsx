@@ -33,6 +33,8 @@ class Controller extends React.Component {
     );
   }
 
+  abortController = new AbortController();
+
   async refreshRelayState() {
     const relays = await api.relays.getRelays();
     this.setState({ relays });
@@ -61,6 +63,7 @@ class Controller extends React.Component {
     this.refreshSchedules();
   }
   componentWillUnmount() {
+    this.abortController.abort();
     clearInterval(this.relayRefreshInterval);
     clearInterval(this.activityRefreshInterval);
   }

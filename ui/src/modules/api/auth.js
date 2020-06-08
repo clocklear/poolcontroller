@@ -2,9 +2,13 @@ import axios from 'axios';
 import authAxios from 'modules/xhr';
 import config from 'modules/config';
 
+const src = axios.CancelToken.source();
+
 const auth0Exchange = async (code) => {
   const res = await axios.get(
-    `/oauth/exchange?code=${code}`
+    `/oauth/exchange?code=${code}`, {
+      cancelToken: src.token
+    }
   ).catch(() => {
     return Promise.resolve({
       data: {
