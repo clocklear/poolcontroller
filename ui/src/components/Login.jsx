@@ -6,7 +6,6 @@ import logo from 'assets/logo.svg';
 export default () => {
   return (
     <Pane
-      elevation={3}
       display="flex"
       flexDirection="column"
       alignItems="center"

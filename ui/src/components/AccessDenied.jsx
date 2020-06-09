@@ -7,7 +7,6 @@ const accessDenied = (props) => {
   return (
     <Pane
       display="flex"
-      elevation={3}
       flexDirection="column"
       alignItems="center"
       justifyContent="center"
