@@ -11,7 +11,9 @@ import (
 	"time"
 
 	"github.com/clocklear/pirelayserver/cmd/pirelayserver/internal"
+
 	"github.com/go-kit/kit/log"
+	"github.com/joho/godotenv"
 )
 
 const (
@@ -35,11 +37,23 @@ func main() {
 	}
 	logger.Log("msg", "Server starting")
 
+	// .env
+	err := godotenv.Load()
+	if os.IsNotExist(err) {
+		logger.Log("msg", "no .env found, skipping load")
+	} else {
+		if err != nil {
+			logger.Log("err", err)
+			os.Exit(1)
+		}
+	}
+
 	// Config.
 	var (
 		httpAddr       = flag.String("http.addr", ":3000", "HTTP listen address")
 		configFile     = flag.String("config.file", "config.json", "Configuration file")
 		eventsFile     = flag.String("events.file", "events.csv", "Events log")
+		devMode        = flag.Bool("dev", false, "When enabled, a stub relay implementation is used")
 		eventsCapacity = flag.Int("events.capacity", 100, "Number of events to keep in events file")
 	)
 	flag.Parse()
@@ -80,8 +94,14 @@ func main() {
 		}
 
 		// Relay controller
-		logger.Log("msg", "Init relay controller")
-		ctrl, err := internal.NewRelayController(logger, []uint8{pinRelay1, pinRelay2, pinRelay3}, cfger, el)
+		var ctrl internal.RelayController
+		if *devMode {
+			logger.Log("msg", "Dev mode, init stub relay controller")
+			ctrl, err = internal.NewStubRelayController(logger, 3, cfger, el)
+		} else {
+			logger.Log("msg", "Init relay controller")
+			ctrl, err = internal.NewPiRelayController(logger, []uint8{pinRelay1, pinRelay2, pinRelay3}, cfger, el)
+		}
 		if err != nil {
 			errc <- err
 			return
@@ -89,7 +109,7 @@ func main() {
 
 		// Server config
 		srv.Addr = *httpAddr
-		srv.Handler = getHandler(cfger, ctrl, el)
+		srv.Handler = getHandler(cfger, ctrl, el, logger)
 		srv.ReadTimeout = time.Second * 30
 		srv.WriteTimeout = time.Second * 30
 

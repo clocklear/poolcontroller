@@ -1,29 +1,30 @@
-import axios from 'axios'
+import axios from 'modules/xhr';
+import config from 'modules/config';
 
 const getConfig = async () => {
   const res = await axios.get(
-    `/config`
+    `${config.apiRoot}/config`
   );
   return res.data;
 };
 
 const createSchedule = async (schedule) => {
   const res = await axios.post(
-    `/config/schedules`, schedule
+    `${config.apiRoot}/config/schedules`, schedule
   );
   return res.data;
 }
 
 const removeSchedule = async (scheduleId) => {
   const res = await axios.delete(
-    `/config/schedules/${scheduleId}`
+    `${config.apiRoot}/config/schedules/${scheduleId}`
   );
   return res.status === 204
 }
 
 const setRelayName = async (relay, relayName) => {
   const res = await axios.post(
-    `/config/relay/${relay}/name`, {
+    `${config.apiRoot}/config/relay/${relay}/name`, {
       relayName
     }
   );

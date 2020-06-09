@@ -1,7 +1,9 @@
-import createHistory from 'history/createBrowserHistory';
+import {
+  createBrowserHistory
+} from 'history';
 import qs from 'qs';
 
-const history = createHistory();
+const history = createBrowserHistory();
 
 history.location = {
   ...history.location,

@@ -1,0 +1,19 @@
+{
+    "name": "Pool Controller",
+    "short_name": "Pool Controller",
+    "icons": [
+        {
+            "src": "/android-chrome-192x192.png?v=M4K2dOrwEj",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "/android-chrome-512x512.png?v=M4K2dOrwEj",
+            "sizes": "512x512",
+            "type": "image/png"
+        }
+    ],
+    "theme_color": "#90d8ff",
+    "background_color": "#90d8ff",
+    "display": "standalone"
+}

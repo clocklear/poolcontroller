@@ -1,18 +1,32 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 
-	// "github.com/go-kit/kit/log"
 	"github.com/clocklear/pirelayserver/cmd/pirelayserver/internal"
+	"github.com/clocklear/pirelayserver/cmd/pirelayserver/internal/auth"
+	"github.com/go-kit/kit/log"
+
+	jwtmiddleware "github.com/auth0/go-jwt-middleware"
+	"github.com/coreos/go-oidc"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/gobuffalo/packr"
 	"github.com/gorilla/mux"
 	uuid "github.com/satori/go.uuid"
 )
+
+type authExchangeResponse struct {
+	IDToken     string                 `json:"idToken"`
+	AccessToken string                 `json:"accessToken"`
+	Profile     map[string]interface{} `json:"profile"`
+}
 
 func okResponse(w http.ResponseWriter, payload interface{}) error {
 	if payload != nil {
@@ -59,16 +73,90 @@ func cacheHeaders(paths []string, cacheTime uint32, h http.Handler) http.Handler
 	})
 }
 
-func getHandler(cfger internal.Configurer, ctrl *internal.RelayController, el *internal.EventLogger) http.Handler {
-	r := mux.NewRouter()
+func withScope(scope string, next func(http.ResponseWriter, *http.Request)) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Extract claims, check required scope
+		user, ok := r.Context().Value("user").(*jwt.Token)
+		if !ok {
+			http.Error(w, "unauthorized", http.StatusForbidden)
+			return
+		}
+		rawPermissions, ok := user.Claims.(jwt.MapClaims)["permissions"].([]interface{})
+		if !ok {
+			http.Error(w, "unauthorized", http.StatusForbidden)
+			return
+		}
 
-	r.HandleFunc("/relays", relayStatusHandler(ctrl)).Methods(http.MethodGet)
-	r.HandleFunc("/relays/{relay}/toggle", toggleRelayHandler(ctrl)).Methods(http.MethodPost)
-	r.HandleFunc("/config", getConfigHandler(cfger)).Methods(http.MethodGet)
-	r.HandleFunc("/config/schedules", addScheduleHandler(cfger, ctrl)).Methods(http.MethodPost)
-	r.HandleFunc("/config/relay/{relay}/name", setRelayNameHandler(cfger, ctrl)).Methods(http.MethodPost)
-	r.HandleFunc("/config/schedules/{id}", removeScheduleHandler(cfger, ctrl)).Methods(http.MethodDelete)
-	r.HandleFunc("/events", getEventsHandler(el)).Methods(http.MethodGet)
+		hasScope := false
+		if ok && user.Valid {
+			for i := range rawPermissions {
+				if rawPermissions[i].(string) == scope {
+					hasScope = true
+				}
+			}
+		}
+
+		if !hasScope {
+			http.Error(w, "forbidden", http.StatusForbidden)
+			return
+		}
+
+		next(w, r)
+	}
+}
+
+// func jwtError(w http.ResponseWriter, r *http.Request, err string) {
+// 	http.Error(w, err, http.StatusForbidden)
+// }
+
+func getHandler(cfger internal.Configurer, ctrl internal.RelayController, el *internal.EventLogger, l log.Logger) http.Handler {
+	r := mux.NewRouter()
+	r.HandleFunc("/oauth/exchange", getOAuthExchangeHandler(l)).Methods(http.MethodGet)
+
+	// Set up router for api routes
+	apiRouter := r.PathPrefix("/api").Subrouter()
+	apiRouter.HandleFunc("/relays", withScope(internal.ReadRelays, relayStatusHandler(ctrl))).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/relays/{relay}/toggle", withScope(internal.WriteRelayToggle, toggleRelayHandler(ctrl))).Methods(http.MethodPost)
+	apiRouter.HandleFunc("/config", withScope(internal.ReadConfig, getConfigHandler(cfger))).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/config/schedules", withScope(internal.WriteConfigSchedules, addScheduleHandler(cfger, ctrl))).Methods(http.MethodPost)
+	apiRouter.HandleFunc("/config/relay/{relay}/name", withScope(internal.WriteRelayName, setRelayNameHandler(cfger, ctrl))).Methods(http.MethodPost)
+	apiRouter.HandleFunc("/config/schedules/{id}", withScope(internal.WriteConfigSchedules, removeScheduleHandler(cfger, ctrl))).Methods(http.MethodDelete)
+	apiRouter.HandleFunc("/events", withScope(internal.ReadEvents, getEventsHandler(el))).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/me", withScope(internal.ReadMe, getMeHandler())).Methods(http.MethodGet)
+
+	// Apply JWT middleware to all the API routes
+	jwtMiddleware := jwtmiddleware.New(jwtmiddleware.Options{
+		// ErrorHandler: jwtError,
+		Extractor: jwtmiddleware.FromFirst(jwtmiddleware.FromAuthHeader,
+			jwtmiddleware.FromParameter("auth_code")),
+		ValidationKeyGetter: func(token *jwt.Token) (interface{}, error) {
+			// Verify 'aud' claim
+			aud := os.Getenv("AUTH0_AUDIENCE")
+			checkAud := token.Claims.(jwt.MapClaims).VerifyAudience(aud, false)
+			if !checkAud {
+				return token, errors.New("invalid audience")
+			}
+			// Verify 'iss' claim
+			iss := fmt.Sprintf("https://%v/", os.Getenv("AUTH0_DOMAIN"))
+			checkIss := token.Claims.(jwt.MapClaims).VerifyIssuer(iss, false)
+			if !checkIss {
+				return token, errors.New("invalid issuer")
+			}
+
+			cert, err := getPemCert(token)
+			if err != nil {
+				panic(err.Error())
+			}
+
+			result, _ := jwt.ParseRSAPublicKeyFromPEM([]byte(cert))
+			return result, nil
+		},
+		// When set, the middleware verifies that tokens are signed with the specific signing algorithm
+		// If the signing method is not constant the ValidationKeyGetter callback can be used to implement additional checks
+		// Important to avoid security issues described here: https://auth0.com/blog/2015/03/31/critical-vulnerabilities-in-json-web-token-libraries/
+		SigningMethod: jwt.SigningMethodRS256,
+	})
+	apiRouter.Use(jwtMiddleware.Handler)
 
 	// Set up handler for web ui
 	cachedPaths := []string{"/static"}
@@ -78,6 +166,73 @@ func getHandler(cfger internal.Configurer, ctrl *internal.RelayController, el *i
 	)
 
 	return r
+}
+
+// this is basically just a JWT parser.  we won't make it here if the token isn't present and valid due to our jwt middleware.
+func getMeHandler() func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		user := r.Context().Value("user").(*jwt.Token)
+		if user == nil {
+			jsonResponse(w, http.StatusUnauthorized, nil)
+		}
+		json.NewEncoder(w).Encode(user.Claims)
+	}
+}
+
+func getOAuthExchangeHandler(l log.Logger) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		authenticator, err := auth.NewAuthenticator()
+		if err != nil {
+			l.Log("err", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		token, err := authenticator.Config.Exchange(context.TODO(), r.URL.Query().Get("code"))
+		if err != nil {
+			l.Log("err", err)
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		rawIDToken, ok := token.Extra("id_token").(string)
+		if !ok {
+			l.Log("err", "No id_token field in oauth2 token.")
+			http.Error(w, "No id_token field in oauth2 token.", http.StatusInternalServerError)
+			return
+		}
+
+		oidcConfig := &oidc.Config{
+			ClientID: os.Getenv("AUTH0_CLIENT_ID"),
+		}
+
+		idToken, err := authenticator.Provider.Verifier(oidcConfig).Verify(context.TODO(), rawIDToken)
+
+		if err != nil {
+			l.Log("err", err)
+			http.Error(w, "Failed to verify ID Token: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		// Getting now the userInfo
+		var profile map[string]interface{}
+		if err := idToken.Claims(&profile); err != nil {
+			l.Log("err", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		// Create response
+		resp := authExchangeResponse{
+			IDToken:     rawIDToken,
+			AccessToken: token.AccessToken,
+			Profile:     profile,
+		}
+
+		// Return it
+		okResponse(w, resp)
+	}
 }
 
 func getEventsHandler(el *internal.EventLogger) func(http.ResponseWriter, *http.Request) {
@@ -100,7 +255,7 @@ type setRelayNameRequest struct {
 	RelayName string `json:"relayName"`
 }
 
-func setRelayNameHandler(cfger internal.Configurer, ctrl *internal.RelayController) func(http.ResponseWriter, *http.Request) {
+func setRelayNameHandler(cfger internal.Configurer, ctrl internal.RelayController) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		stridx := vars["relay"]
@@ -142,7 +297,7 @@ func setRelayNameHandler(cfger internal.Configurer, ctrl *internal.RelayControll
 	}
 }
 
-func removeScheduleHandler(cfger internal.Configurer, ctrl *internal.RelayController) func(http.ResponseWriter, *http.Request) {
+func removeScheduleHandler(cfger internal.Configurer, ctrl internal.RelayController) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		id := vars["id"]
@@ -189,7 +344,7 @@ func removeScheduleHandler(cfger internal.Configurer, ctrl *internal.RelayContro
 	}
 }
 
-func addScheduleHandler(cfger internal.Configurer, ctrl *internal.RelayController) func(http.ResponseWriter, *http.Request) {
+func addScheduleHandler(cfger internal.Configurer, ctrl internal.RelayController) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		decoder := json.NewDecoder(r.Body)
 		var s internal.Schedule
@@ -271,7 +426,7 @@ func getConfigHandler(cfger internal.Configurer) func(http.ResponseWriter, *http
 	}
 }
 
-func relayStatusHandler(ctrl *internal.RelayController) func(http.ResponseWriter, *http.Request) {
+func relayStatusHandler(ctrl internal.RelayController) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		s, err := ctrl.Status()
 		if err != nil {
@@ -282,7 +437,7 @@ func relayStatusHandler(ctrl *internal.RelayController) func(http.ResponseWriter
 	}
 }
 
-func toggleRelayHandler(ctrl *internal.RelayController) func(http.ResponseWriter, *http.Request) {
+func toggleRelayHandler(ctrl internal.RelayController) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		stridx := vars["relay"]
@@ -305,4 +460,47 @@ func toggleRelayHandler(ctrl *internal.RelayController) func(http.ResponseWriter
 
 		okResponse(w, status)
 	}
+}
+
+type Jwks struct {
+	Keys []JSONWebKeys `json:"keys"`
+}
+
+type JSONWebKeys struct {
+	Kty string   `json:"kty"`
+	Kid string   `json:"kid"`
+	Use string   `json:"use"`
+	N   string   `json:"n"`
+	E   string   `json:"e"`
+	X5c []string `json:"x5c"`
+}
+
+func getPemCert(token *jwt.Token) (string, error) {
+	cert := ""
+	resp, err := http.Get(fmt.Sprintf("https://%v/.well-known/jwks.json", os.Getenv("AUTH0_DOMAIN")))
+
+	if err != nil {
+		return cert, err
+	}
+	defer resp.Body.Close()
+
+	var jwks = Jwks{}
+	err = json.NewDecoder(resp.Body).Decode(&jwks)
+
+	if err != nil {
+		return cert, err
+	}
+
+	for k, _ := range jwks.Keys {
+		if token.Header["kid"] == jwks.Keys[k].Kid {
+			cert = "-----BEGIN CERTIFICATE-----\n" + jwks.Keys[k].X5c[0] + "\n-----END CERTIFICATE-----"
+		}
+	}
+
+	if cert == "" {
+		err := errors.New("Unable to find appropriate key.")
+		return cert, err
+	}
+
+	return cert, nil
 }

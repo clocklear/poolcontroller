@@ -1,6 +1,6 @@
-# pirelayserver
+# pool controller
 
-This project exposes a Go web service that is meant to be used to control a relay extension board on a Raspberry Pi ([this extension board, to be exact](https://www.amazon.com/gp/product/B07CZL2SKN)).
+This project exposes a React SPA atop a Go web service that controls a relay extension board on a Raspberry Pi ([this extension board, to be exact](https://www.amazon.com/gp/product/B07CZL2SKN)).  I use it to automate my pool equipment.
 
 ## background and overview
 
@@ -14,10 +14,11 @@ Most of the power of this project lies in the ability to schedule relay actions.
 * Allows for scheduling of relay actions with cron syntax
 * Persistent configuration; created configuration survives service restarts
 * Sample `systemd` unit file for creating service inside Raspbian
+* React SPA provided with full Auth0 support
 
 ## service endpoints
 
-### `GET /relays`
+### `GET /api/relays`
 
 Returns the current status of the relays.
 
@@ -45,7 +46,7 @@ Returns the current status of the relays.
 }
 ```
 
-### `POST /config/relay/{relay}/name`
+### `POST /api/config/relay/{relay}/name`
 
 Allows for changing of a given relay name.  A `204 No Content` status code indicates success; all other responses are failures.
 
@@ -57,11 +58,11 @@ Allows for changing of a given relay name.  A `204 No Content` status code indic
 }
 ```
 
-### `POST /relays/{relay}/toggle`
+### `POST /api/relays/{relay}/toggle`
 
 Toggles the given relay (selected by `1`, `2`, or `3`).  Response is the current state of all relays (similar to above).
 
-### `GET /config`
+### `GET /api/config`
 
 Returns the contents of the current configuration.
 
@@ -86,7 +87,7 @@ Returns the contents of the current configuration.
 }
 ```
 
-### `POST /config/schedules`
+### `POST /api/config/schedules`
 
 Creates a new schedule entry.  The schedule should have following JSON syntax:
 
@@ -111,14 +112,30 @@ A `201 Created` response indicates the schedule was accepted and applied.  All o
 
 The `id` is a uuid assigned to the schedule automatically that can be used to remove the schedule if desired.
 
-### `DELETE /config/schedules/{id}`
+### `DELETE /api/config/schedules/{id}`
 
 Removes the given schedule entry.  If the `id` provided is invalid, a `404 Not Found` will be returned.  A `204 No Content` response indicates success.
 
 ## building and running
 
+### required environment variables and config
+
+Because of the integration with Auth0, the Go service expects to be started with a few environment variables:
+
+* `AUTH0_AUDIENCE` -- the identifier of the API you are targeting.  I use this for my different environments to ensure dev creds don't work in prod (and vice versa).
+* `AUTH0_CALLBACK_URL` -- the callback value you have set up for your Auth0 app.
+* `AUTH0_CLIENT_ID` -- the client ID of your Auth0 app
+* `AUTH0_CLIENT_SECRET` -- the client secret of your Auth0 app
+* `AUTH0_DOMAIN` -- your Auth0 tenant URL (sans protocal, e.g. `lockleartech.auth0.com`)
+
+You should also edit `ui/modules/config/index.js` and replace the `auth0` values there with values appropriate for your environment.
+
+### development
+
+The SPA can be started in development mode by changing to the `ui` directory and running `yarn start`.  The app will be started on `:3001` and will expect to find the Go service running on `:3000` (the react development server has been configured to proxy API requests to this port).  To launch the Go service in development mode, just `go run cmd/pirelayserver --dev=true`.  This enables a stub relay controller implementation that allows the service and SPA to function, but doesn't require
+the pi or relay hardware.
+
+### building a release
+
 Clone the repo, edit the code, then `make build` to rebuild for Raspberry Pi.  The `build` make target explicitly targets Pi 3+; if you are using an older Pi, try `GOARM=6`.  `scp` the file to your Pi, then execute the binary.  The service appears on port `3000` by default; you can override it with the `--http.addr` flag.
 
-## the future
-
-Eventually there will be a web UI for interacting with the API.  Maybe I'll also integrate AWS services (lightly) to allow for CloudWatch alerts on failures?
