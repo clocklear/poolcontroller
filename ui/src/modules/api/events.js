@@ -1,10 +1,15 @@
-import axios from 'axios'
+import axios from 'modules/xhr';
+import config from 'modules/config';
 
 const getEvents = async () => {
-  const res = await axios.get(
-    `/events`
-  );
-  return res.data;
+  try {
+    const res = await axios.get(
+      `${config.apiRoot}/events`
+    );
+    return res.data;
+  } catch (error) {
+    return [];
+  }
 };
 
 export default {

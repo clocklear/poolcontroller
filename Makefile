@@ -13,4 +13,6 @@ deploy:
 	scp ./pirelayserver pi@${PI}:/opt/pirelayserver/pirelayserver
 	ssh -t pi@${PI} 'sudo service pirelayserver start'
 
-.PHONY: build deploy ui pirelayserver
+release: build deploy
+
+.PHONY: build deploy ui pirelayserver release

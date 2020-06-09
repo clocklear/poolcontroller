@@ -1,8 +1,7 @@
 import {
-  createBrowserHistory
-} from 'history';
-import {
-  createStore
+  createStore,
+  applyMiddleware,
+  compose
 } from 'redux';
 import {
   persistStore,
@@ -12,17 +11,26 @@ import storage from 'redux-persist/lib/storage';
 
 import rootReducer from 'reducers';
 
-export const history = createBrowserHistory();
-
 const persistConfig = {
   key: 'pirelayserver',
   storage,
-  whitelist: [''],
+  whitelist: ['user'],
 };
+
+/**
+ * This is for the redux dev tools extension
+ */
+const composeEnhancers = (process.env.ENV !== 'production' && window.__REDUX_DEVTOOLS_EXTENSION_COMPOSE__) || compose;
+
+const enhancer = composeEnhancers(
+  applyMiddleware()
+  // other store enhancers if any
+);
+
 const reducer = persistReducer(persistConfig, rootReducer);
 
 const configureStore = (initialState = {}) => {
-  const store = createStore(reducer, initialState);
+  const store = createStore(reducer, initialState, enhancer);
 
   return {
     persistor: persistStore(store),

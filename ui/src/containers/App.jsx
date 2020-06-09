@@ -1,241 +1,118 @@
 import React from 'react';
-import { Pane, Spinner, Heading, Tab, TabNavigation } from 'evergreen-ui';
-import { connect } from 'react-redux';
-import api from 'modules/api';
-import sizes from 'react-sizes';
-import initialState from 'modules/initialState';
-import RelayStates from './RelayStates';
-import ScheduledActions from './ScheduledActions';
-import ActivityLog from './ActivityLog';
-import { Route, Link, Switch } from 'react-router-dom';
-import { withRouter } from 'react-router';
 import PropTypes from 'prop-types';
+import { Pane } from 'evergreen-ui';
+import { connect } from 'react-redux';
+import { Route, Switch, Redirect } from 'react-router-dom';
+import { withRouter } from 'react-router';
+import sizes from 'react-sizes';
+import Controller from './Controller';
+import { Login, Logout, AccessDenied, Header } from 'components';
+import { Auth0Receiver } from 'components/auth';
+import auth0 from 'auth0-js';
+import config from 'modules/config';
+import jwt from 'jsonwebtoken';
+
+const auth0Client = new auth0.WebAuth({
+  domain: config.auth0.domain,
+  clientID: config.auth0.clientId,
+  audience: config.auth0.audience,
+  redirectUri: config.auth0.redirectUri,
+});
 
 class App extends React.Component {
   static propTypes = {
-    match: PropTypes.object.isRequired,
-    location: PropTypes.object.isRequired,
-    history: PropTypes.object.isRequired,
+    user: PropTypes.shape({
+      accessToken: PropTypes.string,
+      workspace: PropTypes.string,
+    }).isRequired,
+    dispatch: PropTypes.func.isRequired,
   };
 
   constructor(props) {
     super(props);
-    this.state = initialState;
-    this.refreshRelayState = this.refreshRelayState.bind(this);
-    this.toggleRelayState = this.toggleRelayState.bind(this);
-    this.editSchedule = this.editSchedule.bind(this);
-    this.saveSchedule = this.saveSchedule.bind(this);
-    this.removeSelectedSchedule = this.removeSelectedSchedule.bind(this);
-    this.openRemoveDialog = this.openRemoveDialog.bind(this);
-    this.closeRemoveScheduleDialog = this.closeRemoveScheduleDialog.bind(this);
-    this.closeEditScheduleDialog = this.closeEditScheduleDialog.bind(this);
-    this.newSchedule = this.newSchedule.bind(this);
-    this.handleEditedScheduleChange = this.handleEditedScheduleChange.bind(
-      this
-    );
+
+    this.isAuthenticated = this.isAuthenticated.bind(this);
+    this.isInvalid = this.isInvalid.bind(this);
+    this.logout = this.logout.bind(this);
   }
 
-  async refreshRelayState() {
-    const relays = await api.relays.getRelays();
-    this.setState({ relays });
+  isAuthenticated() {
+    const {
+      user: { accessToken },
+    } = this.props;
+    // No token means we are unauthenticated
+    return accessToken !== '';
   }
 
-  async refreshActivity() {
-    const activity = await api.events.getEvents();
-    this.setState({ activity });
+  isInvalid() {
+    const { user } = this.props;
+    if (!user) return true;
+    const { accessToken } = user;
+    if (!accessToken) return true;
+    // Basic check against expiration time
+    const decodedToken = jwt.decode(accessToken, { complete: true });
+    const dateNow = new Date().getTime();
+    const expAt = decodedToken.payload.exp * 1000;
+    return expAt < dateNow;
   }
 
-  async refreshSchedules() {
-    const cfg = await api.config.getConfig();
-    this.setState({ schedules: cfg.schedules });
-  }
-
-  async componentDidMount() {
-    this.refreshRelayState();
-    this.relayRefreshInterval = setInterval(() => {
-      this.refreshRelayState();
-    }, 5000);
-    this.refreshActivity();
-    this.activityRefreshInterval = setInterval(() => {
-      this.refreshActivity();
-    }, 5000);
-    this.setState({ isLoading: false });
-    this.refreshSchedules();
-  }
-  componentWillUnmount() {
-    clearInterval(this.relayRefreshInterval);
-    clearInterval(this.activityRefreshInterval);
-  }
-
-  async toggleRelayState(relay) {
-    const relays = await api.relays.toggleRelay(relay);
-    this.setState({ relays });
-  }
-
-  editSchedule(s) {
-    const editedSchedule = { ...s };
-    this.setState({
-      scheduleDialogIntent: 'Edit',
-      scheduleDialogIsOpen: true,
-      editedSchedule,
-    });
-  }
-
-  handleEditedScheduleChange(prop, val) {
-    const s = this.state.editedSchedule;
-    this.setState({
-      editedSchedule: {
-        ...s,
-        [prop]: val,
-      },
-    });
-  }
-
-  closeRemoveScheduleDialog() {
-    this.setState({ removeScheduleDialogIsOpen: false });
-  }
-
-  closeEditScheduleDialog() {
-    this.setState({ scheduleDialogIsOpen: false });
-  }
-
-  async removeSelectedSchedule() {
-    await api.config.removeSchedule(this.state.removeScheduleId);
-    this.refreshSchedules();
-    this.closeRemoveScheduleDialog();
-  }
-
-  async saveSchedule() {
-    await api.config.createSchedule(this.state.editedSchedule);
-    await this.refreshSchedules();
-    this.setState({ scheduleDialogIsOpen: false });
-  }
-
-  newSchedule() {
-    const editedSchedule = {
-      relay: 0,
-      expression: '',
-      action: 'off',
-    };
-    this.setState({
-      scheduleDialogIntent: 'New',
-      scheduleDialogIsOpen: true,
-      editedSchedule,
-    });
-  }
-
-  openRemoveDialog(sId) {
-    this.setState({
-      removeScheduleId: sId,
-      removeScheduleDialogIsOpen: true,
+  logout() {
+    // Logout of auth0
+    auth0Client.logout({
+      returnTo: `${config.auth0.logoutReturnToUri}`,
     });
   }
 
   render() {
-    const {
-      relays,
-      isLoading,
-      activity,
-      schedules,
-      scheduleDialogIsOpen,
-      scheduleDialogIntent,
-      editedSchedule,
-      removeScheduleDialogIsOpen,
-    } = this.state;
-
-    const { pathname } = this.props.location;
-
-    const tabs = [
-      { name: 'Relay States', route: '/' },
-      { name: 'Schedules', route: '/schedules' },
-      { name: 'Activity Log', route: '/activity' },
-    ];
+    const isAuthenticated = this.isAuthenticated();
+    const { user } = this.props;
+    const isInvalid = this.isInvalid();
 
     return (
       <Pane margin="auto" maxWidth={800} padding={16}>
-        {!this.props.isMobile && (
-          <Heading paddingY={16} size={700}>
-            PiRelayServer
-          </Heading>
+        {!isInvalid && (
+          <Header
+            user={user}
+            onLogout={this.logout}
+            isAuthenticated={isAuthenticated}
+          />
         )}
-        <TabNavigation marginY={16} flexBasis={240} marginRight={24}>
-          {tabs.map((tab, index) => (
-            <Tab
-              key={tab.name}
-              id={tab.name}
-              is={Link}
-              to={tab.route}
-              isSelected={pathname === tab.route}
-              aria-controls={`panel-${tab.name}`}>
-              {tab.name}
-            </Tab>
-          ))}
-        </TabNavigation>
-        {isLoading && (
-          <Pane
-            display="flex"
-            alignItems="center"
-            justifyContent="center"
-            height={400}>
-            <Spinner />
-          </Pane>
-        )}
-        {!isLoading && (
-          <Switch>
-            <Route
-              exact
-              path="/"
-              render={props => (
-                <RelayStates
-                  {...props}
-                  relays={relays}
-                  toggleRelayState={this.toggleRelayState}
-                />
-              )}
-            />
-            <Route
-              exact
-              path="/schedules"
-              render={props => (
-                <ScheduledActions
-                  {...props}
-                  schedules={schedules}
-                  editSchedule={this.editSchedule}
-                  openRemoveDialog={this.openRemoveDialog}
-                  removeScheduleDialogIsOpen={removeScheduleDialogIsOpen}
-                  removeSelectedSchedule={this.removeSelectedSchedule}
-                  scheduleDialogIsOpen={scheduleDialogIsOpen}
-                  closeRemoveScheduleDialog={this.closeRemoveScheduleDialog}
-                  scheduleDialogIntent={scheduleDialogIntent}
-                  editedSchedule={editedSchedule}
-                  relays={relays}
-                  closeEditScheduleDialog={this.closeEditScheduleDialog}
-                  newSchedule={this.newSchedule}
-                  saveSchedule={this.saveSchedule}
-                  handleEditedScheduleChange={this.handleEditedScheduleChange}
-                />
-              )}
-            />
-            <Route
-              exact
-              path="/activity"
-              render={props => <ActivityLog {...props} activity={activity} />}
-            />
-          </Switch>
-        )}
+        <Switch>
+          <Route path="/callbacks/auth0">
+            <Auth0Receiver />
+          </Route>
+          <Route path="/auth/login">
+            <Login />
+          </Route>
+          <Route path="/auth/logout">
+            <Logout />
+          </Route>
+          {isInvalid && (
+            <Route>
+              <AccessDenied onLogout={this.logout}></AccessDenied>
+            </Route>
+          )}
+          {!isAuthenticated && <Redirect to="/auth/login" />}
+          {isAuthenticated && (
+            <Route>
+              <Controller />
+            </Route>
+          )}
+        </Switch>
       </Pane>
     );
   }
 }
 
-const mapStateToProps = state => {
-  return {};
-};
-
 const mapSizesToProps = ({ width }) => ({
   isMobile: width && width < 480,
 });
 
-export default connect(mapStateToProps)(
-  withRouter(sizes(mapSizesToProps)(App))
-);
+const mapStateToProps = (state) => {
+  return { user: state.user };
+};
+
+let app = withRouter(App);
+app = sizes(mapSizesToProps)(app);
+app = connect(mapStateToProps)(app);
+export default app;
