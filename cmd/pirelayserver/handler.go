@@ -12,6 +12,7 @@ import (
 
 	"github.com/clocklear/pirelayserver/cmd/pirelayserver/internal"
 	"github.com/clocklear/pirelayserver/cmd/pirelayserver/internal/auth"
+	"github.com/clocklear/pirelayserver/cmd/pirelayserver/internal/eventer"
 	"github.com/go-kit/kit/log"
 
 	jwtmiddleware "github.com/auth0/go-jwt-middleware"
@@ -109,7 +110,7 @@ func withScope(scope string, next func(http.ResponseWriter, *http.Request)) func
 // 	http.Error(w, err, http.StatusForbidden)
 // }
 
-func getHandler(cfger internal.Configurer, ctrl internal.RelayController, el *internal.EventLogger, l log.Logger) http.Handler {
+func getHandler(cfger internal.Configurer, ctrl internal.RelayController, el eventer.Eventer, l log.Logger) http.Handler {
 	r := mux.NewRouter()
 	r.HandleFunc("/oauth/exchange", getOAuthExchangeHandler(l)).Methods(http.MethodGet)
 
@@ -235,11 +236,15 @@ func getOAuthExchangeHandler(l log.Logger) func(http.ResponseWriter, *http.Reque
 	}
 }
 
-func getEventsHandler(el *internal.EventLogger) func(http.ResponseWriter, *http.Request) {
+func getEventsHandler(el eventer.Eventer) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		e := el.Events()
+		e, err := el.ListAll()
+		if err != nil {
+			errorResponse(w, err)
+			return
+		}
 		// Clone the slice
-		b := make([]*internal.Event, len(e))
+		b := make([]eventer.Event, len(e))
 		copy(b, e)
 		// Reverse the slice
 		for i := len(b)/2 - 1; i >= 0; i-- {

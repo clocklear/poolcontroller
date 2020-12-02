@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	gosyslog "log/syslog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -11,8 +12,10 @@ import (
 	"time"
 
 	"github.com/clocklear/pirelayserver/cmd/pirelayserver/internal"
+	"github.com/clocklear/pirelayserver/cmd/pirelayserver/internal/eventer"
 
 	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/syslog"
 	"github.com/joho/godotenv"
 )
 
@@ -28,17 +31,39 @@ type errResponse struct {
 
 func main() {
 
+	// Config.
+	var (
+		httpAddr       = flag.String("http.addr", ":3000", "HTTP listen address")
+		configFile     = flag.String("config.file", "config.json", "Configuration file")
+		eventsFile     = flag.String("events.file", "events.csv", "Events log")
+		devMode        = flag.Bool("dev", false, "When enabled, a stub relay implementation is used")
+		sysLog         = flag.Bool("syslog", false, "When enabled, logging is routed to syslog")
+		eventsCapacity = flag.Int("events.capacity", 100, "Number of events to keep in events file")
+	)
+	flag.Parse()
+
 	// Logging.
 	var logger log.Logger
-	{
-		logger = log.NewLogfmtLogger(os.Stderr)
-		logger = log.With(logger, "ts", log.DefaultTimestampUTC)
-		logger = log.With(logger, "caller", log.DefaultCaller)
+	w, err := gosyslog.New(gosyslog.LOG_INFO, "poolcontroller")
+	useSysLog := *sysLog
+	if err != nil {
+		fmt.Println(fmt.Sprintf("failed to use syslog, falling back to stdout: %v", err))
+		useSysLog = false
 	}
+
+	// syslog logger with logfmt formatting
+	if useSysLog {
+		logger = syslog.NewSyslogLogger(w, log.NewLogfmtLogger)
+		fmt.Println("Server output routed to syslog")
+	} else {
+		logger = log.NewLogfmtLogger(os.Stderr)
+	}
+	logger = log.With(logger, "ts", log.DefaultTimestampUTC)
+	logger = log.With(logger, "caller", log.DefaultCaller)
 	logger.Log("msg", "Server starting")
 
 	// .env
-	err := godotenv.Load()
+	err = godotenv.Load()
 	if os.IsNotExist(err) {
 		logger.Log("msg", "no .env found, skipping load")
 	} else {
@@ -47,17 +72,6 @@ func main() {
 			os.Exit(1)
 		}
 	}
-
-	// Config.
-	var (
-		httpAddr       = flag.String("http.addr", ":3000", "HTTP listen address")
-		configFile     = flag.String("config.file", "config.json", "Configuration file")
-		eventsFile     = flag.String("events.file", "events.csv", "Events log")
-		devMode        = flag.Bool("dev", false, "When enabled, a stub relay implementation is used")
-		eventsCapacity = flag.Int("events.capacity", 100, "Number of events to keep in events file")
-	)
-	flag.Parse()
-	logger.Log("msg", "Parsed config")
 
 	// Mechanical.
 	errc := make(chan error)
@@ -72,8 +86,8 @@ func main() {
 	}()
 	logger.Log("msg", "Set up interrupt")
 
-	// Events logger
-	el, err := internal.WithEventLogger(*eventsFile, uint16(*eventsCapacity))
+	// Eventer
+	el, err := eventer.WithCSVEventer(*eventsFile, uint16(*eventsCapacity))
 	if err != nil {
 		errc <- err
 		return
@@ -113,7 +127,7 @@ func main() {
 		srv.ReadTimeout = time.Second * 30
 		srv.WriteTimeout = time.Second * 30
 
-		el.Log("Server booted up")
+		el.Event("Server booted up")
 		logger.Log("msg", "Starting web app")
 
 		errc <- srv.ListenAndServe()
@@ -122,5 +136,5 @@ func main() {
 	// Run.
 	logger.Log("msg", "Transferring control to web app")
 	logger.Log("exit", <-errc)
-	el.Log("Server shutdown cleanly")
+	el.Event("Server shutdown cleanly")
 }

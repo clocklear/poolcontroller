@@ -7,18 +7,20 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/robfig/cron/v3"
+
+	"github.com/clocklear/pirelayserver/cmd/pirelayserver/internal/eventer"
 )
 
 type StubRelayController struct {
 	logger      log.Logger
 	cfger       Configurer
-	el          *EventLogger
+	el          eventer.Eventer
 	scheduler   *cron.Cron
 	relayStates map[uint8]bool
 	m           sync.RWMutex
 }
 
-func NewStubRelayController(l log.Logger, numRelays uint8, cfger Configurer, el *EventLogger) (*StubRelayController, error) {
+func NewStubRelayController(l log.Logger, numRelays uint8, cfger Configurer, el eventer.Eventer) (*StubRelayController, error) {
 	// Init stub controller
 	c := StubRelayController{
 		logger:    l,
@@ -142,7 +144,7 @@ func (c *StubRelayController) Toggle(relay uint8) error {
 		ss = "on"
 	}
 	n, _ := c.relayName(relay)
-	c.el.Log(fmt.Sprintf("Toggled '%v' (relay %v), new state is %v", n, relay, ss))
+	c.el.Event(fmt.Sprintf("Toggled '%v' (relay %v), new state is %v", n, relay, ss))
 	return nil
 }
 
@@ -154,7 +156,7 @@ func (c *StubRelayController) On(relay uint8, cause string) error {
 	c.relayStates[relay-1] = true
 	c.m.Unlock()
 	n, _ := c.relayName(relay)
-	c.el.Log(fmt.Sprintf("Switching '%v' (relay %v) on, cause: %v", n, relay, cause))
+	c.el.Event(fmt.Sprintf("Switching '%v' (relay %v) on, cause: %v", n, relay, cause))
 	return nil
 }
 
@@ -166,6 +168,6 @@ func (c *StubRelayController) Off(relay uint8, cause string) error {
 	c.relayStates[relay-1] = false
 	c.m.Unlock()
 	n, _ := c.relayName(relay)
-	c.el.Log(fmt.Sprintf("Switching '%v' (relay %v) off, cause: %v", n, relay, cause))
+	c.el.Event(fmt.Sprintf("Switching '%v' (relay %v) off, cause: %v", n, relay, cause))
 	return nil
 }

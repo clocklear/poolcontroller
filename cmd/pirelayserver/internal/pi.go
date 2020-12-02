@@ -6,6 +6,8 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/robfig/cron/v3"
 	"github.com/stianeikeland/go-rpio/v4"
+
+	"github.com/clocklear/pirelayserver/cmd/pirelayserver/internal/eventer"
 )
 
 type PiRelayController struct {
@@ -13,10 +15,10 @@ type PiRelayController struct {
 	scheduler *cron.Cron
 	logger    log.Logger
 	cfger     Configurer
-	el        *EventLogger
+	el        eventer.Eventer
 }
 
-func NewPiRelayController(l log.Logger, relayPins []uint8, cfger Configurer, el *EventLogger) (*PiRelayController, error) {
+func NewPiRelayController(l log.Logger, relayPins []uint8, cfger Configurer, el eventer.Eventer) (*PiRelayController, error) {
 	c := PiRelayController{
 		relayPins: relayPins,
 		logger:    l,
@@ -129,7 +131,7 @@ func (c *PiRelayController) Toggle(relay uint8) error {
 		ss = "on"
 	}
 	n, _ := c.relayName(relay)
-	c.el.Log(fmt.Sprintf("Toggled '%v' (relay %v), new state is %v", n, relay, ss))
+	c.el.Event(fmt.Sprintf("Toggled '%v' (relay %v), new state is %v", n, relay, ss))
 	return nil
 }
 
@@ -145,7 +147,7 @@ func (c *PiRelayController) On(relay uint8, cause string) error {
 	pin.Output()
 	pin.High()
 	n, _ := c.relayName(relay)
-	c.el.Log(fmt.Sprintf("Switching '%v' (relay %v) on, cause: %v", n, relay, cause))
+	c.el.Event(fmt.Sprintf("Switching '%v' (relay %v) on, cause: %v", n, relay, cause))
 	return nil
 }
 
@@ -161,6 +163,6 @@ func (c *PiRelayController) Off(relay uint8, cause string) error {
 	pin.Output()
 	pin.Low()
 	n, _ := c.relayName(relay)
-	c.el.Log(fmt.Sprintf("Switching '%v' (relay %v) off, cause: %v", n, relay, cause))
+	c.el.Event(fmt.Sprintf("Switching '%v' (relay %v) off, cause: %v", n, relay, cause))
 	return nil
 }

@@ -1,25 +1,22 @@
-package internal
+package eventer
 
 import (
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gocarina/gocsv"
 )
 
-type Event struct {
-	Stamp time.Time `csv:"stamp" json:"stamp"`
-	Msg   string    `csv:"msg" json:"msg"`
-}
-
-type EventLogger struct {
+type CSVEventer struct {
 	filename string
-	events   []*Event
+	events   []Event
 	capacity uint16
+	m        *sync.RWMutex
 }
 
-func WithEventLogger(filename string, capacity uint16) (*EventLogger, error) {
+func WithCSVEventer(filename string, capacity uint16) (Eventer, error) {
 	// Load our file, parse the contents, put it in memory
 	eventsFile, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE, os.ModePerm)
 	if err != nil {
@@ -27,10 +24,11 @@ func WithEventLogger(filename string, capacity uint16) (*EventLogger, error) {
 	}
 	defer eventsFile.Close()
 
-	el := EventLogger{
+	el := CSVEventer{
 		filename: filename,
 		capacity: capacity,
-		events:   make([]*Event, 0),
+		events:   make([]Event, 0),
+		m:        &sync.RWMutex{},
 	}
 
 	if err := gocsv.UnmarshalFile(eventsFile, &el.events); err != nil {
@@ -42,13 +40,15 @@ func WithEventLogger(filename string, capacity uint16) (*EventLogger, error) {
 	return &el, nil
 }
 
-func (l *EventLogger) Log(msg string) error {
+func (l *CSVEventer) Event(msg string) error {
 	e := Event{
 		Stamp: time.Now(),
 		Msg:   msg,
 	}
 	// Append to slice
-	l.events = append(l.events, &e)
+	l.m.Lock()
+	defer l.m.Unlock()
+	l.events = append(l.events, e)
 	// Prune
 	if len(l.events) > int(l.capacity) {
 		// Take the back <l.capacity> events from the slice
@@ -63,6 +63,8 @@ func (l *EventLogger) Log(msg string) error {
 	return gocsv.MarshalFile(&l.events, eventsFile)
 }
 
-func (l *EventLogger) Events() []*Event {
-	return l.events
+func (l *CSVEventer) ListAll() ([]Event, error) {
+	l.m.RLock()
+	defer l.m.RUnlock()
+	return l.events, nil
 }
