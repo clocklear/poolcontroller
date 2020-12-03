@@ -31,7 +31,9 @@ const me = async () => {
   return res.data;
 }
 
-export default {
+const obj = {
   auth0Exchange,
   me,
 };
+
+export default obj;

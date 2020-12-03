@@ -2,7 +2,7 @@ import {
   ActionTypes
 } from '../constants';
 
-export default {
+const userActions = {
   login: () => ({
     type: ActionTypes.USER_LOGIN,
   }),
@@ -36,3 +36,5 @@ export default {
     type: ActionTypes.CLEAR_USER,
   }),
 };
+
+export default userActions;

@@ -12,6 +12,8 @@ const getEvents = async () => {
   }
 };
 
-export default {
+const obj = {
   getEvents
 }
+
+export default obj

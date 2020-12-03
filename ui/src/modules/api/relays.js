@@ -23,7 +23,24 @@ const toggleRelay = async (relay) => {
   }
 }
 
-export default {
-  getRelays,
-  toggleRelay
+const renameRelay = async (relay, relayName) => {
+  try {
+    await axios.post(
+      `${config.apiRoot}/config/relay/${relay}/name`,
+      {
+        relayName
+      }
+    );
+    return
+  } catch (error) {
+    return [];
+  }
 }
+
+const obj = {
+  getRelays,
+  renameRelay,
+  toggleRelay,
+};
+
+export default obj;

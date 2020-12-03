@@ -3,7 +3,7 @@ import { Auth0Sender } from 'components/auth';
 import { Avatar, Pane } from 'evergreen-ui';
 import logo from 'assets/logo.svg';
 
-export default () => {
+const login = () => {
   return (
     <Pane
       display="flex"
@@ -16,3 +16,5 @@ export default () => {
     </Pane>
   );
 };
+
+export default login;

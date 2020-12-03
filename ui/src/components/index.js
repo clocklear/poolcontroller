@@ -1,5 +1,6 @@
 import ActivityLog from './ActivityLog';
-import RelayStates from './RelayStates';
+import RelayList from './RelayList';
+import Relay from './Relay';
 import ScheduledActions from './ScheduledActions';
 import Login from './Login';
 import Logout from './Logout';
@@ -9,7 +10,8 @@ import AccessDenied from './AccessDenied';
 export {
   AccessDenied,
   ActivityLog,
-  RelayStates,
+  Relay,
+  RelayList,
   ScheduledActions,
   Login,
   Logout,

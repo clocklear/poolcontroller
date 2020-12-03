@@ -31,9 +31,11 @@ const setRelayName = async (relay, relayName) => {
   return res.status === 204
 }
 
-export default {
+const obj = {
   getConfig,
   createSchedule,
   removeSchedule,
   setRelayName
 }
+
+export default obj

@@ -3,7 +3,7 @@ import { Pane, Spinner, Tab, TabNavigation } from 'evergreen-ui';
 import { connect } from 'react-redux';
 import api from 'modules/api';
 import initialState from 'modules/initialState';
-import { RelayStates, ScheduledActions, ActivityLog } from 'components';
+import { RelayList, ScheduledActions, ActivityLog } from 'components';
 import { Route, Link, Switch } from 'react-router-dom';
 import { withRouter } from 'react-router';
 import PropTypes from 'prop-types';
@@ -20,6 +20,7 @@ class Controller extends React.Component {
     super(props);
     this.state = initialState;
     this.refreshRelayState = this.refreshRelayState.bind(this);
+    this.renameRelay = this.renameRelay.bind(this);
     this.toggleRelayState = this.toggleRelayState.bind(this);
     this.editSchedule = this.editSchedule.bind(this);
     this.saveSchedule = this.saveSchedule.bind(this);
@@ -71,6 +72,11 @@ class Controller extends React.Component {
   async toggleRelayState(relay) {
     const relays = await api.relays.toggleRelay(relay);
     this.setState({ relays });
+  }
+
+  async renameRelay(relay, name) {
+    await api.relays.renameRelay(relay, name);
+    this.refreshRelayState();
   }
 
   editSchedule(s) {
@@ -192,10 +198,11 @@ class Controller extends React.Component {
               exact
               path="/"
               render={(props) => (
-                <RelayStates
+                <RelayList
                   {...props}
                   relays={relays}
                   toggleRelayState={this.toggleRelayState}
+                  renameRelay={this.renameRelay}
                 />
               )}
             />

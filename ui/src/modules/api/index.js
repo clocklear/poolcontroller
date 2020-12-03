@@ -4,9 +4,11 @@ import relays from './relays'
 import auth from './auth'
 
 
-export default {
+const obj = {
   auth,
   config,
   events,
   relays
 };
+
+export default obj;
