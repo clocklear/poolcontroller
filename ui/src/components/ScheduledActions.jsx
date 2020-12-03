@@ -5,9 +5,11 @@ import {
   Heading,
   IconButton,
   Dialog,
+  EditIcon,
   FormField,
   Combobox,
   TextInput,
+  TrashIcon,
   Button,
 } from 'evergreen-ui';
 import cronstrue from 'cronstrue';
@@ -66,7 +68,7 @@ class ScheduledActions extends React.Component {
       handleEditedScheduleChange,
     } = this.props;
 
-    const getReadableCronString = expr => {
+    const getReadableCronString = (expr) => {
       try {
         return cronstrue.toString(expr);
       } catch {
@@ -111,7 +113,7 @@ class ScheduledActions extends React.Component {
       <>
         {schedules &&
           schedules.length > 0 &&
-          schedules.map(s => (
+          schedules.map((s) => (
             <Pane
               key={s.id}
               display="flex"
@@ -130,12 +132,12 @@ class ScheduledActions extends React.Component {
                 </Pane>
                 <Pane display="flex" flexDirection="row">
                   <IconButton
-                    icon="edit"
+                    icon={EditIcon}
                     appearance="minimal"
                     onClick={() => editSchedule(s)}
                   />
                   <IconButton
-                    icon="trash"
+                    icon={TrashIcon}
                     intent="danger"
                     appearance="minimal"
                     onClick={() => openRemoveDialog(s.id)}
@@ -161,7 +163,7 @@ class ScheduledActions extends React.Component {
           <Button
             marginRight={12}
             iconBefore="add-to-artifact"
-            onClick={e => newSchedule()}>
+            onClick={(e) => newSchedule()}>
             New scheduled action
           </Button>
         </Pane>
@@ -190,7 +192,7 @@ class ScheduledActions extends React.Component {
                 width="100%"
                 placeholder="0 0 * * *"
                 value={editedSchedule.expression}
-                onChange={e =>
+                onChange={(e) =>
                   handleEditedScheduleChange('expression', e.target.value)
                 }
               />
@@ -198,21 +200,21 @@ class ScheduledActions extends React.Component {
             <FormField label="Relay" marginTop={10}>
               <Combobox
                 items={relays}
-                itemToString={i => (i ? i.name : '')}
+                itemToString={(i) => (i ? i.name : '')}
                 selectedItem={findRelayById(relays, editedSchedule.relay)}
-                onChange={i => handleEditedScheduleChange('relay', i.relay)}
+                onChange={(i) => handleEditedScheduleChange('relay', i.relay)}
                 width="100%"
               />
             </FormField>
             <FormField label="Action" marginTop={10}>
               <Combobox
                 items={actions}
-                itemToString={i => (i ? i.label : '')}
+                itemToString={(i) => (i ? i.label : '')}
                 selectedItem={findActionByString(
                   actions,
                   editedSchedule.action
                 )}
-                onChange={i => handleEditedScheduleChange('action', i.value)}
+                onChange={(i) => handleEditedScheduleChange('action', i.value)}
                 width="100%"
               />
             </FormField>

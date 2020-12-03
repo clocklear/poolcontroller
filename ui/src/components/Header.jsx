@@ -2,6 +2,7 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import {
   Avatar,
+  LogOutIcon,
   Pane,
   Popover,
   Menu,
@@ -41,7 +42,7 @@ class Header extends React.Component {
                 content={
                   <Menu>
                     <Menu.Group>
-                      <Menu.Item icon="log-out" onSelect={onLogout}>
+                      <Menu.Item icon={LogOutIcon} onSelect={onLogout}>
                         Logout
                       </Menu.Item>
                     </Menu.Group>
