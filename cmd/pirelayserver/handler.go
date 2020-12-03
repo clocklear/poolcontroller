@@ -264,7 +264,7 @@ func setRelayNameHandler(cfger internal.Configurer, ctrl internal.RelayControlle
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		stridx := vars["relay"]
-		idx, err := strconv.Atoi(stridx)
+		idx, err := strconv.ParseUint(stridx, 10, 8)
 		if err != nil {
 			errorResponse(w, err)
 			return
@@ -446,7 +446,7 @@ func toggleRelayHandler(ctrl internal.RelayController) func(http.ResponseWriter,
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		stridx := vars["relay"]
-		idx, err := strconv.Atoi(stridx)
+		idx, err := strconv.ParseUint(stridx, 10, 8)
 		if err != nil {
 			errorResponse(w, err)
 			return
