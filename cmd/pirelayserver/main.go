@@ -47,7 +47,7 @@ func main() {
 	w, err := gosyslog.New(gosyslog.LOG_INFO, "poolcontroller")
 	useSysLog := *sysLog
 	if err != nil {
-		fmt.Println(fmt.Sprintf("failed to use syslog, falling back to stdout: %v", err))
+		fmt.Printf("failed to use syslog, falling back to stdout: %v\n", err)
 		useSysLog = false
 	}
 

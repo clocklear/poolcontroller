@@ -1,11 +1,11 @@
 package internal
 
 const (
-	ReadConfig           = "read:config"
-	ReadEvents           = "read:events"
-	ReadMe               = "read:me"
-	ReadRelays           = "read:relays"
-	WriteConfigSchedules = "write:config.schedules"
-	WriteRelayName       = "write:relay.name"
-	WriteRelayToggle     = "write:relay.toggle"
+	ReadConfig       = "read:config"
+	ReadEvents       = "read:events"
+	ReadMe           = "read:me"
+	ReadRelays       = "read:relays"
+	WriteConfig      = "write:config"
+	WriteRelayName   = "write:relay.name"
+	WriteRelayToggle = "write:relay.toggle"
 )

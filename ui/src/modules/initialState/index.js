@@ -9,8 +9,21 @@ const states = {
     removeScheduleDialogIsOpen: false,
     scheduleDialogIntent: "",
     removeScheduleId: 0,
+    apiKeys: [],
+    newAPIKeyDialogIsOpen: false,
+    newAPIKeyDesc: "",
+    createdAPIKey: "",
+    apiKeyCreatedDialogIsOpen: false,
+    removeAPIKeyId: 0,
+    removeAPIKeyDialogIsOpen: false,
   },
   development: {
+    removeAPIKeyId: 0,
+    removeAPIKeyDialogIsOpen: false,
+    createdAPIKey: "",
+    apiKeyCreatedDialogIsOpen: false,
+    newAPIKeyDesc: "",
+    newAPIKeyDialogIsOpen: false,
     removeScheduleId: 0,
     removeScheduleDialogIsOpen: false,
     editedSchedule: {},
@@ -72,7 +85,11 @@ const states = {
         "expression": "* * * ? * 2-6/2",
         "action": "on"
       }
-    ]
+    ],
+    apiKeys: [{
+      "id": "1234-5678",
+      "desc": "Sample API Key"
+    }]
   }
 }
 

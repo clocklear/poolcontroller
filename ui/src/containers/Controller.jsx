@@ -3,7 +3,7 @@ import { Pane, Spinner, Tab, TabNavigation } from 'evergreen-ui';
 import { connect } from 'react-redux';
 import api from 'modules/api';
 import initialState from 'modules/initialState';
-import { RelayList, ScheduledActions, ActivityLog } from 'components';
+import { RelayList, ScheduledActions, ActivityLog, APIKeys } from 'components';
 import { Route, Link, Switch } from 'react-router-dom';
 import { withRouter } from 'react-router';
 import PropTypes from 'prop-types';
@@ -25,13 +25,21 @@ class Controller extends React.Component {
     this.editSchedule = this.editSchedule.bind(this);
     this.saveSchedule = this.saveSchedule.bind(this);
     this.removeSelectedSchedule = this.removeSelectedSchedule.bind(this);
-    this.openRemoveDialog = this.openRemoveDialog.bind(this);
+    this.openRemoveScheduleDialog = this.openRemoveScheduleDialog.bind(this);
     this.closeRemoveScheduleDialog = this.closeRemoveScheduleDialog.bind(this);
     this.closeEditScheduleDialog = this.closeEditScheduleDialog.bind(this);
     this.newSchedule = this.newSchedule.bind(this);
-    this.handleEditedScheduleChange = this.handleEditedScheduleChange.bind(
-      this
-    );
+    this.handleEditedScheduleChange =
+      this.handleEditedScheduleChange.bind(this);
+    this.refreshAPIKeys = this.refreshAPIKeys.bind(this);
+    this.newAPIKey = this.newAPIKey.bind(this);
+    this.closeNewAPIKeyDialog = this.closeNewAPIKeyDialog.bind(this);
+    this.handleNewAPIKeyDescChange = this.handleNewAPIKeyDescChange.bind(this);
+    this.createAPIKey = this.createAPIKey.bind(this);
+    this.closeAPIKeyCreatedDialog = this.closeAPIKeyCreatedDialog.bind(this);
+    this.openRemoveAPIKeyDialog = this.openRemoveAPIKeyDialog.bind(this);
+    this.closeRemoveAPIKeyDialog = this.closeRemoveAPIKeyDialog.bind(this);
+    this.removeSelectedAPIKey = this.removeSelectedAPIKey.bind(this);
   }
 
   abortController = new AbortController();
@@ -47,8 +55,13 @@ class Controller extends React.Component {
   }
 
   async refreshSchedules() {
-    const cfg = await api.config.getConfig();
-    this.setState({ schedules: cfg.schedules });
+    const schedules = await api.config.getSchedules();
+    this.setState({ schedules: schedules });
+  }
+
+  async refreshAPIKeys() {
+    const apiKeys = await api.config.getAPIKeys();
+    this.setState({ apiKeys: apiKeys });
   }
 
   async componentDidMount() {
@@ -62,6 +75,7 @@ class Controller extends React.Component {
     }, 5000);
     this.setState({ isLoading: false });
     this.refreshSchedules();
+    this.refreshAPIKeys();
   }
   componentWillUnmount() {
     this.abortController.abort();
@@ -106,6 +120,37 @@ class Controller extends React.Component {
     this.setState({ scheduleDialogIsOpen: false });
   }
 
+  closeNewAPIKeyDialog() {
+    this.setState({ newAPIKeyDialogIsOpen: false });
+  }
+
+  async createAPIKey() {
+    const newKey = await api.config.createAPIKey(this.state.newAPIKeyDesc);
+    if (!newKey) {
+      return;
+    }
+    await this.refreshAPIKeys();
+    this.setState({
+      apiKeyCreatedDialogIsOpen: true,
+      newAPIKeyDialogIsOpen: false,
+      createdAPIKey: newKey,
+    });
+  }
+
+  closeAPIKeyCreatedDialog() {
+    this.setState({ apiKeyCreatedDialogIsOpen: false, createdAPIKey: '' });
+  }
+
+  closeRemoveAPIKeyDialog() {
+    this.setState({ removeAPIKeyDialogIsOpen: false });
+  }
+
+  async removeSelectedAPIKey() {
+    await api.config.removeAPIKey(this.state.removeAPIKeyId);
+    this.refreshAPIKeys();
+    this.closeRemoveAPIKeyDialog();
+  }
+
   async removeSelectedSchedule() {
     await api.config.removeSchedule(this.state.removeScheduleId);
     this.refreshSchedules();
@@ -131,23 +176,49 @@ class Controller extends React.Component {
     });
   }
 
-  openRemoveDialog(sId) {
+  newAPIKey() {
+    this.setState({
+      newAPIKeyDialogIsOpen: true,
+      newAPIKeyDesc: '',
+    });
+  }
+
+  openRemoveScheduleDialog(sId) {
     this.setState({
       removeScheduleId: sId,
       removeScheduleDialogIsOpen: true,
     });
   }
 
+  openRemoveAPIKeyDialog(kId) {
+    this.setState({
+      removeAPIKeyId: kId,
+      removeAPIKeyDialogIsOpen: true,
+    });
+  }
+
+  handleNewAPIKeyDescChange(newAPIKeyDesc) {
+    this.setState({
+      newAPIKeyDesc,
+    });
+  }
+
   render() {
     const {
-      relays,
-      isLoading,
       activity,
-      schedules,
-      scheduleDialogIsOpen,
-      scheduleDialogIntent,
+      apiKeyCreatedDialogIsOpen,
+      apiKeys,
+      createdAPIKey,
       editedSchedule,
+      isLoading,
+      newAPIKeyDesc,
+      newAPIKeyDialogIsOpen,
+      relays,
       removeScheduleDialogIsOpen,
+      scheduleDialogIntent,
+      scheduleDialogIsOpen,
+      schedules,
+      removeAPIKeyDialogIsOpen,
     } = this.state;
 
     const { pathname } = this.props.location;
@@ -156,17 +227,8 @@ class Controller extends React.Component {
       { name: 'Relay States', route: '/' },
       { name: 'Schedules', route: '/schedules' },
       { name: 'Activity Log', route: '/activity' },
+      { name: 'API Keys', route: '/apikeys' },
     ];
-
-    // Was attempting to put the logo in the background subtlely, but
-    // need to tweak the opacity/alpha...
-    // const containerStyle = {
-    //   backgroundImage: `url(${logo})`,
-    //   backgroundRepeat: "no-repeat",
-    //   backgroundPositionY: "bottom",
-    //   backgroundPositionX: "right",
-    //   backgroundSize: 384,
-    // };
 
     return (
       <Pane>
@@ -212,20 +274,20 @@ class Controller extends React.Component {
               render={(props) => (
                 <ScheduledActions
                   {...props}
-                  schedules={schedules}
+                  closeEditScheduleDialog={this.closeEditScheduleDialog}
+                  closeRemoveScheduleDialog={this.closeRemoveScheduleDialog}
+                  editedSchedule={editedSchedule}
                   editSchedule={this.editSchedule}
-                  openRemoveDialog={this.openRemoveDialog}
+                  handleEditedScheduleChange={this.handleEditedScheduleChange}
+                  newSchedule={this.newSchedule}
+                  openRemoveScheduleDialog={this.openRemoveScheduleDialog}
+                  relays={relays}
                   removeScheduleDialogIsOpen={removeScheduleDialogIsOpen}
                   removeSelectedSchedule={this.removeSelectedSchedule}
-                  scheduleDialogIsOpen={scheduleDialogIsOpen}
-                  closeRemoveScheduleDialog={this.closeRemoveScheduleDialog}
-                  scheduleDialogIntent={scheduleDialogIntent}
-                  editedSchedule={editedSchedule}
-                  relays={relays}
-                  closeEditScheduleDialog={this.closeEditScheduleDialog}
-                  newSchedule={this.newSchedule}
                   saveSchedule={this.saveSchedule}
-                  handleEditedScheduleChange={this.handleEditedScheduleChange}
+                  scheduleDialogIntent={scheduleDialogIntent}
+                  scheduleDialogIsOpen={scheduleDialogIsOpen}
+                  schedules={schedules}
                 />
               )}
             />
@@ -233,6 +295,29 @@ class Controller extends React.Component {
               exact
               path="/activity"
               render={(props) => <ActivityLog {...props} activity={activity} />}
+            />
+            <Route
+              exact
+              path="/apikeys"
+              render={(props) => (
+                <APIKeys
+                  {...props}
+                  apiKeyCreatedDialogIsOpen={apiKeyCreatedDialogIsOpen}
+                  apiKeys={apiKeys}
+                  closeAPIKeyCreatedDialog={this.closeAPIKeyCreatedDialog}
+                  closeNewAPIKeyDialog={this.closeNewAPIKeyDialog}
+                  createAPIKey={this.createAPIKey}
+                  createdAPIKey={createdAPIKey}
+                  handleNewAPIKeyDescChange={this.handleNewAPIKeyDescChange}
+                  newAPIKey={this.newAPIKey}
+                  newAPIKeyDesc={newAPIKeyDesc}
+                  newAPIKeyDialogIsOpen={newAPIKeyDialogIsOpen}
+                  openRemoveAPIKeyDialog={this.openRemoveAPIKeyDialog}
+                  removeAPIKeyDialogIsOpen={removeAPIKeyDialogIsOpen}
+                  closeRemoveAPIKeyDialog={this.closeRemoveAPIKeyDialog}
+                  removeSelectedAPIKey={this.removeSelectedAPIKey}
+                />
+              )}
             />
           </Switch>
         )}

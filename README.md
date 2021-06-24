@@ -138,4 +138,3 @@ the pi or relay hardware.
 ### building a release
 
 Clone the repo, edit the code, then `make build` to rebuild for Raspberry Pi.  The `build` make target explicitly targets Pi 3+; if you are using an older Pi, try `GOARM=6`.  `scp` the file to your Pi, then execute the binary.  The service appears on port `3000` by default; you can override it with the `--http.addr` flag.
-

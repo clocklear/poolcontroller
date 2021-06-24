@@ -32,7 +32,7 @@ class ScheduledActions extends React.Component {
       })
     ).isRequired,
     editSchedule: PropTypes.func.isRequired,
-    openRemoveDialog: PropTypes.func.isRequired,
+    openRemoveScheduleDialog: PropTypes.func.isRequired,
     removeScheduleDialogIsOpen: PropTypes.bool.isRequired,
     removeSelectedSchedule: PropTypes.func.isRequired,
     scheduleDialogIsOpen: PropTypes.bool.isRequired,
@@ -54,7 +54,7 @@ class ScheduledActions extends React.Component {
     const {
       schedules,
       editSchedule,
-      openRemoveDialog,
+      openRemoveScheduleDialog,
       removeScheduleDialogIsOpen,
       removeSelectedSchedule,
       scheduleDialogIsOpen,
@@ -140,7 +140,7 @@ class ScheduledActions extends React.Component {
                     icon={TrashIcon}
                     intent="danger"
                     appearance="minimal"
-                    onClick={() => openRemoveDialog(s.id)}
+                    onClick={() => openRemoveScheduleDialog(s.id)}
                   />
                 </Pane>
               </Pane>

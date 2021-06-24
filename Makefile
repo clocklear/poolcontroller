@@ -4,7 +4,7 @@ ui:
 	cd ./ui && yarn build
 
 pirelayserver:
-	GOOS=linux GOARCH=arm GOARM=7 packr build ./cmd/pirelayserver
+	GOOS=linux GOARCH=arm GOARM=7 go build ./cmd/pirelayserver
 
 build: ui pirelayserver
 	
@@ -15,4 +15,7 @@ deploy:
 
 release: build deploy
 
-.PHONY: build deploy ui pirelayserver release
+vendor:
+	go mod vendor && go mod tidy
+
+.PHONY: build deploy ui pirelayserver release vendor

@@ -17,8 +17,9 @@ const (
 
 // Config is a pirelayserver config
 type Config struct {
-	Schedules  []Schedule       `json:"schedules"`
-	RelayNames map[uint8]string `json:"relayNames"`
+	Schedules  []Schedule                  `json:"schedules"`
+	RelayNames map[uint8]string            `json:"relayNames"`
+	APIKeys    map[string]APIKeyCollection `json:"apiKeys"`
 }
 
 // Schedule is a mapping of a relay action along with a cron expression
@@ -38,6 +39,13 @@ type State struct {
 type Status struct {
 	States []State `json:"relayStates"`
 }
+
+type APIKey struct {
+	Key  string `json:"key"`
+	Desc string `json:"desc"`
+}
+
+type APIKeyCollection map[string]APIKey
 
 // Configurer describes an interface for retrieving and storing a config
 type Configurer interface {

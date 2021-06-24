@@ -1,4 +1,5 @@
 import ActivityLog from './ActivityLog';
+import APIKeys from './APIKeys';
 import RelayList from './RelayList';
 import Relay from './Relay';
 import ScheduledActions from './ScheduledActions';
@@ -10,6 +11,7 @@ import AccessDenied from './AccessDenied';
 export {
   AccessDenied,
   ActivityLog,
+  APIKeys,
   Relay,
   RelayList,
   ScheduledActions,

@@ -7,18 +7,19 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/clocklear/pirelayserver/cmd/pirelayserver/internal"
 	"github.com/clocklear/pirelayserver/cmd/pirelayserver/internal/auth"
 	"github.com/clocklear/pirelayserver/cmd/pirelayserver/internal/eventer"
+	"github.com/clocklear/pirelayserver/ui"
 	"github.com/go-kit/kit/log"
 
 	jwtmiddleware "github.com/auth0/go-jwt-middleware"
 	"github.com/coreos/go-oidc"
 	"github.com/dgrijalva/jwt-go"
-	"github.com/gobuffalo/packr"
 	"github.com/gorilla/mux"
 	uuid "github.com/satori/go.uuid"
 )
@@ -50,10 +51,14 @@ func jsonResponse(w http.ResponseWriter, status int, payload interface{}) error 
 }
 
 func errorResponse(w http.ResponseWriter, err error) error {
+	return errorResponseWithCode(w, err, http.StatusInternalServerError)
+}
+
+func errorResponseWithCode(w http.ResponseWriter, err error, code int) error {
 	b := errResponse{
 		Error: err.Error(),
 	}
-	return jsonResponse(w, http.StatusInternalServerError, b)
+	return jsonResponse(w, code, b)
 }
 
 func cacheHeaders(paths []string, cacheTime uint32, h http.Handler) http.Handler {
@@ -118,10 +123,13 @@ func getHandler(cfger internal.Configurer, ctrl internal.RelayController, el eve
 	apiRouter := r.PathPrefix("/api").Subrouter()
 	apiRouter.HandleFunc("/relays", withScope(internal.ReadRelays, relayStatusHandler(ctrl))).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/relays/{relay}/toggle", withScope(internal.WriteRelayToggle, toggleRelayHandler(ctrl))).Methods(http.MethodPost)
-	apiRouter.HandleFunc("/config", withScope(internal.ReadConfig, getConfigHandler(cfger))).Methods(http.MethodGet)
-	apiRouter.HandleFunc("/config/schedules", withScope(internal.WriteConfigSchedules, addScheduleHandler(cfger, ctrl))).Methods(http.MethodPost)
+	apiRouter.HandleFunc("/config/schedules", withScope(internal.ReadConfig, getScheduleHandler(cfger))).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/config/schedules", withScope(internal.WriteConfig, addScheduleHandler(cfger, ctrl))).Methods(http.MethodPost)
+	apiRouter.HandleFunc("/config/schedules/{id}", withScope(internal.WriteConfig, removeScheduleHandler(cfger, ctrl))).Methods(http.MethodDelete)
 	apiRouter.HandleFunc("/config/relay/{relay}/name", withScope(internal.WriteRelayName, setRelayNameHandler(cfger, ctrl))).Methods(http.MethodPost)
-	apiRouter.HandleFunc("/config/schedules/{id}", withScope(internal.WriteConfigSchedules, removeScheduleHandler(cfger, ctrl))).Methods(http.MethodDelete)
+	apiRouter.HandleFunc("/config/keys", withScope(internal.WriteConfig, createAPIKeyHandler(cfger, ctrl))).Methods(http.MethodPost)
+	apiRouter.HandleFunc("/config/keys", withScope(internal.ReadConfig, getAPIKeysHandler(cfger, ctrl))).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/config/keys/{id}", withScope(internal.WriteConfig, removeAPIKeyHandler(cfger, ctrl))).Methods(http.MethodDelete)
 	apiRouter.HandleFunc("/events", withScope(internal.ReadEvents, getEventsHandler(el))).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/me", withScope(internal.ReadMe, getMeHandler())).Methods(http.MethodGet)
 
@@ -161,9 +169,8 @@ func getHandler(cfger internal.Configurer, ctrl internal.RelayController, el eve
 
 	// Set up handler for web ui
 	cachedPaths := []string{"/static"}
-	box := packr.NewBox("../../ui/build")
 	r.PathPrefix("/").Handler(
-		cacheHeaders(cachedPaths, 31536000, http.StripPrefix("/", http.FileServer(box))),
+		cacheHeaders(cachedPaths, 31536000, ui.Handler()),
 	)
 
 	return r
@@ -175,6 +182,7 @@ func getMeHandler() func(http.ResponseWriter, *http.Request) {
 		user := r.Context().Value("user").(*jwt.Token)
 		if user == nil {
 			jsonResponse(w, http.StatusUnauthorized, nil)
+			return
 		}
 		json.NewEncoder(w).Encode(user.Claims)
 	}
@@ -252,7 +260,6 @@ func getEventsHandler(el eventer.Eventer) func(http.ResponseWriter, *http.Reques
 			b[i], b[opp] = b[opp], b[i]
 		}
 		okResponse(w, b)
-		return
 	}
 }
 
@@ -349,6 +356,17 @@ func removeScheduleHandler(cfger internal.Configurer, ctrl internal.RelayControl
 	}
 }
 
+func getScheduleHandler(cfger internal.Configurer) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		cfg, err := cfger.Get()
+		if err != nil {
+			errorResponse(w, err)
+			return
+		}
+		okResponse(w, cfg.Schedules)
+	}
+}
+
 func addScheduleHandler(cfger internal.Configurer, ctrl internal.RelayController) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		decoder := json.NewDecoder(r.Body)
@@ -420,17 +438,6 @@ func addScheduleHandler(cfger internal.Configurer, ctrl internal.RelayController
 	}
 }
 
-func getConfigHandler(cfger internal.Configurer) func(http.ResponseWriter, *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		cfg, err := cfger.Get()
-		if err != nil {
-			errorResponse(w, err)
-			return
-		}
-		okResponse(w, cfg)
-	}
-}
-
 func relayStatusHandler(ctrl internal.RelayController) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		s, err := ctrl.Status()
@@ -467,6 +474,215 @@ func toggleRelayHandler(ctrl internal.RelayController) func(http.ResponseWriter,
 	}
 }
 
+type createAPIKeyRequest struct {
+	Desc string `json:"desc"`
+}
+
+type createAPIKeyResponse struct {
+	Key string `json:"key"`
+}
+
+func getSubjectFromToken(tok *jwt.Token) (string, error) {
+	if tok == nil {
+		return "", fmt.Errorf("missing jwt token")
+	}
+	claims, ok := tok.Claims.(jwt.MapClaims)
+	if !ok {
+		return "", fmt.Errorf("invalid user claims")
+	}
+	rawSubject, ok := claims["sub"]
+	if !ok {
+		return "", fmt.Errorf("error determining subject")
+	}
+	subject, ok := rawSubject.(string)
+	if !ok {
+		return "", fmt.Errorf("error casting subject to string")
+	}
+	return subject, nil
+}
+
+func createAPIKeyHandler(cfger internal.Configurer, ctrl internal.RelayController) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Read the user, determine subject
+		user := r.Context().Value("user").(*jwt.Token)
+		if user == nil {
+			jsonResponse(w, http.StatusUnauthorized, nil)
+			return
+		}
+		subject, err := getSubjectFromToken(user)
+		if err != nil {
+			errorResponse(w, err)
+			return
+		}
+
+		// Decode request
+		decoder := json.NewDecoder(r.Body)
+		var req createAPIKeyRequest
+		err = decoder.Decode(&req)
+		if err != nil {
+			errorResponse(w, err)
+			return
+		}
+		if req.Desc == "" {
+			errorResponseWithCode(w, fmt.Errorf("bad request, missing api key description"), http.StatusBadRequest)
+			return
+		}
+
+		// Grab the current config
+		config, err := cfger.Get()
+		if err != nil {
+			errorResponse(w, err)
+			return
+		}
+
+		// Create map if it doesn't exist
+		if config.APIKeys == nil {
+			config.APIKeys = make(map[string]internal.APIKeyCollection)
+		}
+
+		// Create user entry if it doesn't exist
+		if _, ok := config.APIKeys[subject]; !ok {
+			config.APIKeys[subject] = internal.APIKeyCollection{}
+		}
+
+		// Create API key
+		apiKey := internal.APIKey{
+			Desc: req.Desc,
+			Key:  uuid.NewV4().String(),
+		}
+		apiKeyId := uuid.NewV4().String()
+
+		// Add to config, persist
+		config.APIKeys[subject][apiKeyId] = apiKey
+		err = cfger.Set(config)
+		if err != nil {
+			errorResponse(w, err)
+			return
+		}
+
+		// Good to go
+		resp := createAPIKeyResponse{
+			Key: apiKey.Key,
+		}
+		jsonResponse(w, http.StatusCreated, resp)
+	}
+}
+
+type apiKeyResponse struct {
+	ID   string `json:"id"`
+	Desc string `json:"desc"`
+}
+
+func getAPIKeysHandler(cfger internal.Configurer, ctrl internal.RelayController) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Read the user, determine subject
+		user := r.Context().Value("user").(*jwt.Token)
+		if user == nil {
+			jsonResponse(w, http.StatusUnauthorized, nil)
+			return
+		}
+		subject, err := getSubjectFromToken(user)
+		if err != nil {
+			errorResponse(w, err)
+			return
+		}
+
+		// Grab the current config
+		config, err := cfger.Get()
+		if err != nil {
+			errorResponse(w, err)
+			return
+		}
+
+		// Create map if it doesn't exist
+		if config.APIKeys == nil {
+			config.APIKeys = make(map[string]internal.APIKeyCollection)
+		}
+
+		// Create user entry if it doesn't exist
+		userKeys, ok := config.APIKeys[subject]
+		if !ok {
+			userKeys = internal.APIKeyCollection{}
+		}
+
+		// Convert user key collection into a deterministic serializable response
+		resp := []apiKeyResponse{}
+		keys := []string{}
+		for k := range userKeys {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, v := range keys {
+			resp = append(resp, apiKeyResponse{
+				ID:   v,
+				Desc: userKeys[v].Desc,
+			})
+		}
+		okResponse(w, resp)
+	}
+}
+
+func removeAPIKeyHandler(cfger internal.Configurer, ctrl internal.RelayController) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Read the user, determine subject
+		user := r.Context().Value("user").(*jwt.Token)
+		if user == nil {
+			jsonResponse(w, http.StatusUnauthorized, nil)
+			return
+		}
+		subject, err := getSubjectFromToken(user)
+		if err != nil {
+			errorResponse(w, err)
+			return
+		}
+
+		// Decode request
+		vars := mux.Vars(r)
+		id := vars["id"]
+		if id == "" {
+			errorResponseWithCode(w, fmt.Errorf("bad request, missing api key id"), http.StatusBadRequest)
+			return
+		}
+
+		// Grab the current config
+		config, err := cfger.Get()
+		if err != nil {
+			errorResponse(w, err)
+			return
+		}
+
+		// Create map if it doesn't exist
+		if config.APIKeys == nil {
+			config.APIKeys = make(map[string]internal.APIKeyCollection)
+		}
+
+		// Create user entry if it doesn't exist
+		userKeys, ok := config.APIKeys[subject]
+		if !ok {
+			userKeys = internal.APIKeyCollection{}
+		}
+
+		// Does the requested key exist?
+		_, exists := userKeys[id]
+		if !exists {
+			errorResponseWithCode(w, fmt.Errorf("api key not found"), http.StatusNotFound)
+			return
+		}
+
+		// Key exists, remove, persist collection
+		delete(userKeys, id)
+		config.APIKeys[subject] = userKeys
+		err = cfger.Set(config)
+		if err != nil {
+			errorResponse(w, err)
+			return
+		}
+
+		// Good to go!
+		okResponse(w, nil)
+	}
+}
+
 type Jwks struct {
 	Keys []JSONWebKeys `json:"keys"`
 }
@@ -496,14 +712,14 @@ func getPemCert(token *jwt.Token) (string, error) {
 		return cert, err
 	}
 
-	for k, _ := range jwks.Keys {
+	for k := range jwks.Keys {
 		if token.Header["kid"] == jwks.Keys[k].Kid {
 			cert = "-----BEGIN CERTIFICATE-----\n" + jwks.Keys[k].X5c[0] + "\n-----END CERTIFICATE-----"
 		}
 	}
 
 	if cert == "" {
-		err := errors.New("Unable to find appropriate key.")
+		err := errors.New("unable to find appropriate key")
 		return cert, err
 	}
 
